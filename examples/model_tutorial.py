@@ -41,7 +41,7 @@ with Dataset.from_hdf(H5_PATH) as ds:
     r_example = phenols[88]
 
     models = {
-        "S": ModelS(),
+        "S": ModelS(lambda_000=20),
         "M1": ModelM1(),
         "M2": ModelM2(),
         "M3": ModelM3(),

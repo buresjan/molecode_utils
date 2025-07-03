@@ -53,7 +53,7 @@ with Dataset.from_hdf(H5_PATH) as ds:
     ax.set_xlabel("ΔG‡  [kcal/mol]")
     ax.set_ylabel("count")
     fig.tight_layout()
-    fig.savefig("phenols_hist.png")
+    fig.savefig("examples/assets/phenols_hist.png")
     print("Histogram saved as 'phenols_hist.png'\n")
 
 print("Tutorial complete ✓")
