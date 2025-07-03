@@ -1,12 +1,11 @@
 from pathlib import Path
-import sys
 import pathlib
 import textwrap
 
 import pandas as pd
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
 
+# Import model and dataset helpers from the installed package
 from molecode_utils.dataset import Dataset
 from molecode_utils.model import (
     ModelS,

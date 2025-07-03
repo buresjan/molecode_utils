@@ -14,15 +14,13 @@ Hands-on tour of *all* `Molecule` capabilities
 """
 from __future__ import annotations
 
-import sys
 import json
 import pathlib
 import statistics
 import h5py
 import pandas as pd
 
-import sys, pathlib
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
+# Import Molecule helper from the installed package
 from molecode_utils.molecule import Molecule
 
 # ----------------------------------------------------------------------

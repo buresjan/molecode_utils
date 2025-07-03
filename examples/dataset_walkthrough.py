@@ -19,17 +19,13 @@ experiment in a REPL or Jupyter after each section.
 """
 from __future__ import annotations
 
-import sys
 import pathlib
 from textwrap import indent
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# ----------------------------------------------------------------------
-# Make the *src* directory importable when run from repo root
-# ----------------------------------------------------------------------
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
+# Import Dataset helper from the installed package
 from molecode_utils.dataset import Dataset
 
 # Optional CLI arg – path to HDF5 file
