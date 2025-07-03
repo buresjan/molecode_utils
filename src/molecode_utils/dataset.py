@@ -1,23 +1,16 @@
-"""
-src/molecode_utils/dataset.py
-=============================
+"""Dataset helpers for the MoleCode archive.
 
-Two complementary classes
--------------------------
-1. MolecodeArchive
-   • Very thin context-manager over one *.h5* file.
-   • Caches Molecule / Reaction objects the first time they’re requested.
-   • Gives dataframe dumps if you need full table access.
+This module exposes two convenience classes:
 
-2. Dataset
-   • A *view* onto **a subset of Reaction idxs** inside a MolecodeArchive.
-   • Chainable `.filter()` based on:
-       · pandas-style query strings,
-       · free-form `lambda Reaction: bool`,
-       · dataset tags (e.g. "Phenols_para"),
-       · arbitrary column inequalities supplied as kwargs.
-   • Easy `.reactions_df()` / `.molecules_df()` exports.
-   • `add_reaction()`, `get_reaction()`, rich `__iter__` / `__len__`.
+``MolecodeArchive``
+    Context manager around a single `.h5` file. The archive lazily caches
+    :class:`Molecule` and :class:`Reaction` objects and can return the raw
+    tables as :class:`pandas.DataFrame` instances.
+
+``Dataset``
+    A lightweight view onto a subset of reactions stored in a
+    ``MolecodeArchive``. It provides pandas-like filtering and DataFrame
+    export helpers.
 """
 from __future__ import annotations
 
@@ -39,7 +32,13 @@ from .reaction import Reaction
 # 1. Low-level archive wrapper
 # ────────────────────────────────────────────────────────────────────
 class MolecodeArchive(contextlib.AbstractContextManager):
-    """Light wrapper around a *.h5* MoleCode file with caching."""
+    """Wrapper around a MoleCode ``.h5`` archive with caching.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Location of the HDF5 file.
+    """
 
     def __init__(self, path: str | pathlib.Path) -> None:
         self._path = pathlib.Path(path)
@@ -82,8 +81,16 @@ class MolecodeArchive(contextlib.AbstractContextManager):
 
     # −− public dataframe dumps (lazy) −−––––––––––––––––––––––––––––––
     def molecules_df(self) -> pd.DataFrame:
+        """Return a copy of the molecules table.
+
+        Returns
+        -------
+        pandas.DataFrame
+            All molecule records stored in the archive.
+        """
         if self._mol_df is None:
             self._mol_df = pd.DataFrame(self._h5["molecules"][:])
+        # hand out a copy so callers can mutate without affecting the cache
         return self._mol_df.copy()
 
     def reactions_df(self, *, add_dataset_str: bool = True) -> pd.DataFrame:
@@ -241,11 +248,19 @@ class Dataset:
         return full[full["rxn_idx"].isin(self._rxn_ids)].reset_index(drop=True)
 
     def molecules_df(self) -> pd.DataFrame:
+        """Return molecules referenced by reactions in this dataset.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Molecule rows from the archive used by the view.
+        """
         rxn_df = self.reactions_df()
         mol_ids = pd.unique(
             rxn_df[["oxid_idx", "subst_idx"]].values.ravel("K")
         )
         full = self._arc.molecules_df()
+        # filter the archive table down to the molecules actually present here
         return full[full["mol_idx"].isin(mol_ids)].reset_index(drop=True)
 
     # ------------------------------------------------------------------
@@ -284,29 +299,41 @@ class Dataset:
             ``deltaG0__lt=-5``, ``KED_H__ge=0.7`` …
             Suffixes: __lt, __le, __gt, __ge, __eq, __ne.
         """
+        # start with a mask that keeps all reactions
         mask = pd.Series(True, index=self._rxn_ids, dtype=bool)
-        df   = self.reactions_df().set_index("rxn_idx")
+        # pull the underlying DataFrame for evaluating the filters
+        df = self.reactions_df().set_index("rxn_idx")
 
         # -- 1. pandas query ------------------------------------------------
         if query:
+            # pandas-style expression evaluated on the reactions table
             mask &= df.eval(query, engine="python")
 
         # -- 2. dataset tag matching ---------------------------------------
         if datasets:
+            # build a regex that ORs all dataset tags
             pat = "|".join(re.escape(tag) for tag in datasets)
             mask &= df["datasets_str"].str.contains(pat, case=False, regex=True)
 
         # -- 3. column inequality mini-dsl ---------------------------------
         op_map = {
-            "__lt": "<", "__le": "<=", "__gt": ">", "__ge": ">=",
-            "__eq": "==", "__ne": "!=",
+            "__lt": "<",
+            "__le": "<=",
+            "__gt": ">",
+            "__ge": ">=",
+            "__eq": "==",
+            "__ne": "!=",
         }
         for key, value in column_filters.items():
             for suffix, sym in op_map.items():
                 if key.endswith(suffix):
                     col = key[: -len(suffix)]
-                    expr = f"{repr(value)} {sym} {col}" if sym in ("<", "<=") else \
-                           f"{col} {sym} {repr(value)}"
+                    expr = (
+                        f"{repr(value)} {sym} {col}"
+                        if sym in ("<", "<=")
+                        else f"{col} {sym} {repr(value)}"
+                    )
+                    # evaluate the inequality expression on the DataFrame
                     mask &= df.eval(expr, engine="python")
                     break
             else:

@@ -81,20 +81,23 @@ class UnitList(list):
 class Molecule:
     """Immutable container for a molecule row.
 
-    Dynamic attribute access returns :class:`Quantity` objects, so you
-    can do::
+    Parameters
+    ----------
+    id : int
+        Primary key (column ``mol_idx``).
+    fields : Mapping[str, Quantity]
+        Dictionary mapping column names to :class:`Quantity` instances.
+
+    Notes
+    -----
+    Dynamic attribute access returns a :class:`Quantity` so you can write::
 
         m.E_H           # -> Quantity(-5.23, "V")
         m.E_H.unit      # -> "V"
         float(m.E_H)    # -> -5.23
 
-    Special aliases
-    ---------------
-    id
-        Primary key (column ``mol_idx``).
-    target_atom, target_atom_other_hs
-        Convenient aliases that automatically pick the non-null value
-        from either substrate- or oxidant-specific columns.
+    The aliases ``target_atom`` and ``target_atom_other_hs`` automatically pick
+    the first non-null value from the substrate or oxidant specific columns.
     """
 
     __slots__ = ("id", "_fields", "_frozen")
@@ -252,7 +255,18 @@ class Molecule:
         return pd.Series(self.to_dict(include_units=include_units))
 
     def info(self, *, width: int = 28) -> str:
-        """Return a nicely formatted summary of all data fields."""
+        """Return a nicely formatted summary of all data fields.
+
+        Parameters
+        ----------
+        width : int, optional
+            Width of the field name column, by default ``28``.
+
+        Returns
+        -------
+        str
+            Human readable table with values and units.
+        """
         lines = [f"Molecule id = {self.id}", ""]
         for name in sorted(
             n for n in self._fields if not callable(self._fields[n])
