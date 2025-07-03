@@ -16,7 +16,6 @@ Hands-on tour of *all* `Reaction` capabilities
 """
 from __future__ import annotations
 
-import sys
 import json
 import pathlib
 import statistics
@@ -25,13 +24,8 @@ import textwrap
 import h5py
 import pandas as pd
 
-# ----------------------------------------------------------------------
-# Make the package importable when run from the repo root
-# ----------------------------------------------------------------------
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from molecode_utils.molecule  import Molecule
+# Import helpers from the installed package
+from molecode_utils.molecule import Molecule
 from molecode_utils.reaction  import Reaction
 
 h5_path        = pathlib.Path("data/molecode-data-v0.1.0.h5")
