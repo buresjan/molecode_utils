@@ -1,23 +1,11 @@
 from __future__ import annotations
 
-"""molecode_utils.model
-~~~~~~~~~~~~~~~~~~~~~~
-Flexible *model* abstraction that can predict the kinetic barrier (ΔG‡)
-for a reaction, given the rich :class:`~molecode_utils.reaction.Reaction`
-objects defined elsewhere in this package.  Several concrete subclasses
-implement the Marcus‐type models that we have been using so far (S, M1–M4).
+"""Model abstractions for predicting kinetic barriers.
 
-A *model* should
-----------------
-1. implement :meth:`Model._predict_one` which returns the predicted
-   barrier (in *kcal mol⁻¹*) for a single :class:`Reaction`;
-2. inherit everything else – batch prediction, error computation, MAE / RMSE
-   helpers – from the :class:`Model` base class.
-
-The API tries to feel very *pandas‑y* – feed it either a single
-:class:`Reaction`, an iterable of reactions, or an entire
-:class:`~molecode_utils.dataset.Dataset`, and get back scalars or
-:pandas:`Series`/`DataFrame` objects in return.
+The module defines an abstract :class:`Model` class and several Marcus-like
+implementations (``ModelS`` and ``ModelM1``–``ModelM4``).  Models operate on
+:class:`Reaction` objects and provide helpers for batch predictions and error
+statistics.
 """
 
 from abc import ABC, abstractmethod
@@ -49,7 +37,18 @@ __all__ = [
 # ──────────────────────────────────────────────────────────────────────
 
 def _q(value: Quantity | Number | None) -> float:
-    """Return *value* as a bare float (or *NaN* if missing)."""
+    """Return ``value`` as a bare float.
+
+    Parameters
+    ----------
+    value : Quantity or Number or None
+        Value that may carry units or be ``None``.
+
+    Returns
+    -------
+    float
+        ``value`` converted to ``float`` or ``NaN`` when missing.
+    """
     if value is None:
         return math.nan
     if isinstance(value, Quantity):
@@ -81,11 +80,18 @@ class Model(ABC):
     def predict(self, item: Dataset | Iterable[Reaction]) -> pd.Series: ...
 
     def predict(self, item):  # type: ignore[override]
-        """Predict barriers for *item*.
+        """Predict barriers for ``item``.
 
-        * **Reaction** → *float*
-        * **Dataset** / *Iterable[Reaction]* → *pandas.Series* indexed by
-          ``rxn_idx``.
+        Parameters
+        ----------
+        item : Reaction or Dataset or Iterable[Reaction]
+            Object(s) for which to compute predicted barriers.
+
+        Returns
+        -------
+        float or pandas.Series
+            A scalar for a single reaction or a series indexed by ``rxn_idx``
+            when ``item`` is iterable.
         """
         if isinstance(item, Reaction):
             return self._predict_one(item)
@@ -106,7 +112,18 @@ class Model(ABC):
     def residual(self, item: Dataset | Iterable[Reaction]) -> pd.Series: ...
 
     def residual(self, item):  # type: ignore[override]
-        """Prediction – *computed* barrier (same return type as :meth:`predict`)."""
+        """Difference between prediction and computed barrier.
+
+        Parameters
+        ----------
+        item : Reaction or Dataset or Iterable[Reaction]
+            Object(s) on which to compute residuals.
+
+        Returns
+        -------
+        float or pandas.Series
+            Residuals in the same shape as :meth:`predict` outputs.
+        """
         if isinstance(item, Reaction):
             try:
                 true = _q(item.computed_barrier)
@@ -133,7 +150,19 @@ class Model(ABC):
 
     # ── simple stats helper ──────────────────────────────────────────
     def evaluate(self, data: Dataset | Iterable[Reaction]) -> pd.DataFrame:
-        """Return *pred*, *actual*, *residual* (+ MAE / RMSE in attrs)."""
+        """Compute predictions and error statistics for ``data``.
+
+        Parameters
+        ----------
+        data : Dataset or Iterable[Reaction]
+            Collection of reactions to evaluate.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Data frame with columns ``pred``, ``actual`` and ``residual``.
+            Mean absolute error and RMSE are stored in ``DataFrame.attrs``.
+        """
         preds = self.predict(data)
 
         # obtain *actual* barriers

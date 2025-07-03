@@ -13,16 +13,24 @@ from .molecule import Quantity, UnitList, Molecule
 class Reaction:
     """Immutable container for a reaction row.
 
-    Attributes
+    Parameters
     ----------
-    id          : Primary key (column ``rxn_idx``).
-    oxidant     : :class:`Molecule` instance referenced by ``oxid_idx``.
-    substrate   : :class:`Molecule` instance referenced by ``subst_idx``.
-    <dynamic>   : Every other reaction–level column becomes a dynamic
-                  attribute that returns a :class:`Quantity`.
+    id : int
+        Primary key (column ``rxn_idx``).
+    fields : Mapping[str, Quantity]
+        Reaction level columns converted to :class:`Quantity` objects.
+    oxidant : Molecule
+        Instance referenced by ``oxid_idx``.
+    substrate : Molecule
+        Instance referenced by ``subst_idx``.
 
-    Example
-    -------
+    Notes
+    -----
+    Any remaining reaction column becomes a dynamic attribute that returns a
+    :class:`Quantity` instance.
+
+    Examples
+    --------
     >>> r.deltaG0, r.deltaG0.unit
     (-12.4, 'kcal/mol')
     >>> r.oxidant.smiles
@@ -168,7 +176,18 @@ class Reaction:
         return pd.Series(self.to_dict(include_units=include_units))
 
     def info(self, *, width: int = 28) -> str:
-        """Tabular dump of all reaction-level fields (plus IDs)."""
+        """Return a tabular dump of reaction-level fields.
+
+        Parameters
+        ----------
+        width : int, optional
+            Width of the name column, by default ``28``.
+
+        Returns
+        -------
+        str
+            Formatted table as a string.
+        """
         lines = [
             f"Reaction id  = {self.id}",
             f"oxidant id   = {self.oxidant.id}",
@@ -183,6 +202,7 @@ class Reaction:
         return "\n".join(lines)
 
     def help(self) -> None:                                       # pragma: no cover
+        """Print a short usage message for interactive sessions."""
         print("Available helpers:")
         print("  • r.info() – tabular dump of reaction-level fields")
         print("  • r.help() – this message")
