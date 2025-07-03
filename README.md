@@ -20,14 +20,6 @@ See [INSTALL.md](INSTALL.md) for installation instructions.
 
 ## Getting started
 
-After installing the package you can explore the tutorials. Each script can be executed directly from the project root:
-
-```bash
-python examples/dataset_walkthrough.py data/molecode-data-v0.1.0.h5
-python examples/molecule_walkthrough.py
-python examples/reaction_walkthrough.py
-python examples/model_walkthrough.py
-```
-
+After installing the package you can explore the tutorials located in the `examples/` folder.
 The tutorials are heavily commented and meant to be run step‑by‑step; they double as documentation for the API.
 
