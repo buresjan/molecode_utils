@@ -7,3 +7,6 @@ Each file focuses on a specific part of the API and can be run directly from the
 - **`molecule_tutorial.py`** – inspects a single molecule entry and illustrates unit-aware arithmetic.
 - **`reaction_tutorial.py`** – explores reaction data and common access patterns.
 - **`model_tutorial.py`** – runs a few of the included Marcus-type models on sample reactions.
+- **`sequential_analysis.py`** – end-to-end example that chains
+  :meth:`Dataset.filter` calls for sequential data reduction,
+  plotting and `ModelM4` evaluation.
