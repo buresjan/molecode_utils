@@ -133,13 +133,23 @@ class Reaction:
         sub_id  = int(row["subst_idx"])
         rxn_id  = int(row["rxn_idx"])
 
-        try:
-            oxidant   = molecule_lookup[ox_id]
-            substrate = molecule_lookup[sub_id]
-        except KeyError as exc:
-            raise KeyError(
-                f"Molecule idx {exc.args[0]} not found in *molecule_lookup*"
-            ) from None
+        def _fallback_mol(prefix: str, idx: int) -> Molecule:
+            fields: Dict[str, Quantity] = {}
+            smi_key = f"{prefix}_smiles"
+            if smi_key in row:
+                smi = row[smi_key]
+                if isinstance(smi, (bytes, bytearray)):
+                    smi = smi.decode().rstrip()
+                fields["smiles"] = Quantity(smi, "-")
+            return Molecule(id=idx, fields=fields)
+
+        oxidant = molecule_lookup.get(ox_id)
+        if oxidant is None:
+            oxidant = _fallback_mol("oxid", ox_id)
+
+        substrate = molecule_lookup.get(sub_id)
+        if substrate is None:
+            substrate = _fallback_mol("subst", sub_id)
 
         # --- convert remaining columns into Quantity objects -------------
         field_objs: Dict[str, Quantity] = {}

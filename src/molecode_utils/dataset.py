@@ -328,11 +328,7 @@ class Dataset:
             for suffix, sym in op_map.items():
                 if key.endswith(suffix):
                     col = key[: -len(suffix)]
-                    expr = (
-                        f"{repr(value)} {sym} {col}"
-                        if sym in ("<", "<=")
-                        else f"{col} {sym} {repr(value)}"
-                    )
+                    expr = f"{col} {sym} {repr(value)}"
                     # evaluate the inequality expression on the DataFrame
                     mask &= df.eval(expr, engine="python")
                     break
