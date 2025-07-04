@@ -3,3 +3,4 @@ __pycache__/
 *.so
 src/molecode_utils.egg-info
 examples/assets/
+.pytest_cache/
