@@ -249,7 +249,15 @@ class Molecule:
     def to_dict(self, *, include_units=False):
         if include_units:
             return {k: (q.value, q.unit) for k, q in self._fields.items()}
-        return {k: q.value for k, q in self._fields.items()}
+        def _clean(v):
+            try:
+                if isinstance(v, float) and np.isnan(v):
+                    return None
+            except Exception:
+                pass
+            return v
+
+        return {k: _clean(q.value) for k, q in self._fields.items()}
 
     def as_series(self, *, include_units=False):
         return pd.Series(self.to_dict(include_units=include_units))
