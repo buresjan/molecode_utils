@@ -5,6 +5,7 @@ This directory contains the Python implementation of the **molecode_utils** pack
 ## Modules
 
 - **`dataset.py`** – defines `Dataset` and `MolecodeArchive` for reading the HDF5 archive, filtering reactions and exporting data to pandas.
+- **`filter.py`** – small helper encapsulating common filtering options for `Dataset`.
 - **`molecule.py`** – immutable `Molecule` container storing molecule rows with unit‑aware values.
 - **`reaction.py`** – immutable `Reaction` container referencing two `Molecule` instances and exposing reaction level data.
 - **`model.py`** – base `Model` abstraction and Marcus‑type implementations (`ModelS`, `ModelM1`, `ModelM2`, `ModelM3`, `ModelM4`).

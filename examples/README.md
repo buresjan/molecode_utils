@@ -10,3 +10,4 @@ Each file focuses on a specific part of the API and can be run directly from the
 - **`sequential_analysis.py`** – end-to-end example that chains
   :meth:`Dataset.filter` calls for sequential data reduction,
   plotting and `ModelM4` evaluation.
+- **`filter_tutorial.py`** – step-by-step guide to the :class:`Filter` helper.
