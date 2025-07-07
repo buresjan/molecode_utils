@@ -191,6 +191,9 @@ class Dataset:
             else archive.reactions_df(add_dataset_str=False)["rxn_idx"].tolist()
         )
 
+        # cache for the reactions DataFrame with molecule columns joined in
+        self._joined_df: pd.DataFrame | None = None
+
     @classmethod
     def from_hdf(cls, path: str | pathlib.Path) -> "Dataset":
         arc = MolecodeArchive(path)
@@ -244,8 +247,27 @@ class Dataset:
     # DataFrame exports
     # ------------------------------------------------------------------
     def reactions_df(self) -> pd.DataFrame:
-        full = self._arc.reactions_df()            # already has datasets_str
-        return full[full["rxn_idx"].isin(self._rxn_ids)].reset_index(drop=True)
+        if self._joined_df is None:
+            # reactions table with dataset names
+            base = self._arc.reactions_df()
+            base = base[base["rxn_idx"].isin(self._rxn_ids)]
+
+            # bring in molecule-level columns for oxidant and substrate
+            mol_df = self._arc.molecules_df()
+            ox_cols = {
+                col: f"oxidant.{col}" for col in mol_df.columns if col != "mol_idx"
+            }
+            ox_df = mol_df.rename(columns=ox_cols).rename(columns={"mol_idx": "oxid_idx"})
+
+            sub_cols = {
+                col: f"substrate.{col}" for col in mol_df.columns if col != "mol_idx"
+            }
+            sub_df = mol_df.rename(columns=sub_cols).rename(columns={"mol_idx": "subst_idx"})
+
+            merged = base.merge(ox_df, on="oxid_idx", how="left").merge(sub_df, on="subst_idx", how="left")
+            self._joined_df = merged.reset_index(drop=True)
+
+        return self._joined_df.copy()
 
     def molecules_df(self) -> pd.DataFrame:
         """Return molecules referenced by reactions in this dataset.
@@ -328,7 +350,8 @@ class Dataset:
             for suffix, sym in op_map.items():
                 if key.endswith(suffix):
                     col = key[: -len(suffix)]
-                    expr = f"{col} {sym} {repr(value)}"
+                    expr_col = f"`{col}`" if not col.isidentifier() else col
+                    expr = f"{expr_col} {sym} {repr(value)}"
                     # evaluate the inequality expression on the DataFrame
                     mask &= df.eval(expr, engine="python")
                     break

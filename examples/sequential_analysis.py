@@ -58,7 +58,7 @@ with Dataset.from_hdf(H5_PATH) as ds:
     print(f"Figure saved: {out2.name}\n")
 
     # ── 3. oxidant E_H filter ───────────────────────────────────────
-    ds_step2 = ds_step1.filter(func=lambda r: float(r.oxidant.E_H) > 1.0)
+    ds_step2 = ds_step1.filter(**{"oxidant.E_H__gt": 1.0})
     print(f"With oxidant E_H > 1.0     : {len(ds_step2)} reactions\n")
 
     # ── 4. model evaluation ─────────────────────────────────────────

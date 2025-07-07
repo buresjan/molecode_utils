@@ -26,5 +26,10 @@ def test_dataset_basic_operations():
         assert 0 < len(filt) <= len(ds)
         for r in filt:
             assert float(r.deltaG0) < 0
+
+        filt_vec = ds.filter(**{"oxidant.E_H__gt": 1.0})
+        filt_lambda = ds.filter(func=lambda r: float(r.oxidant.E_H) > 1.0)
+        assert len(filt_vec) == len(filt_lambda)
+        assert set(filt_vec._rxn_ids) == set(filt_lambda._rxn_ids)
     finally:
         ds.close()
