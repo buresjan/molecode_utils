@@ -371,3 +371,18 @@ class Dataset:
     # pretty repr
     def __repr__(self) -> str:        # pragma: no cover
         return f"<Dataset: {len(self)} reactions>"
+    
+    # ------------------------------------------------------------------
+    # convenience attribute access
+    # ------------------------------------------------------------------
+    def __getattr__(self, name: str):
+        """Return a reaction column as a pandas Series if present."""
+        df = self.reactions_df()
+        if name in df.columns:
+            return df[name]
+        raise AttributeError(name)
+
+    def __dir__(self):  # pragma: no cover - interactive helper
+        base = set(super().__dir__())
+        cols = set(self.reactions_df().columns)
+        return sorted(base | cols)
