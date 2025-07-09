@@ -1,4 +1,5 @@
 import pathlib
+import plotly.io as pio
 
 from molecode_utils.dataset import Dataset
 from molecode_utils.figures import TwoDMol
@@ -6,6 +7,8 @@ from molecode_utils.figures import TwoDMol
 H5_PATH = pathlib.Path("data/molecode-data-v0.1.0.h5")
 ASSETS = pathlib.Path("examples/assets")
 ASSETS.mkdir(exist_ok=True)
+
+pio.renderers.default = "browser"
 
 ds = Dataset.from_hdf(H5_PATH)
 

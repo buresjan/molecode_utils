@@ -1,4 +1,5 @@
 import pathlib
+import plotly.io as pio
 
 from molecode_utils.dataset import Dataset
 from molecode_utils.model import ModelM4
@@ -11,8 +12,6 @@ ASSETS.mkdir(exist_ok=True)
 
 # Load dataset
 ds = Dataset.from_hdf(H5_PATH)
-
-import plotly.io as pio
 
 pio.renderers.default = "browser"
 
