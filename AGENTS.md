@@ -12,6 +12,7 @@
 - **`examples/`** – a collection of tutorial scripts demonstrating how to use the library’s API in practice.
 - **`data/`** – a sample MoleCode HDF5 file for experimentation.
 - **`INSTALL.md`** – setup instructions for installing the package.
+- **`documentation/`** – module level cheat sheets with code examples.
 
 ## Module Responsibilities (Agents)
 
@@ -48,6 +49,9 @@ Each module in the `molecode_utils` package has a specific responsibility – yo
 5. Run `black .` and `mypy .` before committing.
 6. Validate functionality using the `examples/` scripts.
 
----
+Additional module usage examples live under `documentation/`. When adding new
+features or modifying behaviour, update the relevant markdown file so that the
+cheat sheets stay accurate.
 
+---
 Following this **Agents & Contributor Guide** helps maintain the quality and consistency of Molecode Utils. Thank you for contributing!
