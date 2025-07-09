@@ -119,7 +119,7 @@ class TwoDRxn:
             latex_lbl = strip_math(latex_lbl)
             unit = strip_math(unit)
             if unit:
-                return f"${latex_lbl}\\;{unit}$"
+                return f"${latex_lbl}\\;[{unit}]$"
             return f"${latex_lbl}$"
 
         # plain text label
