@@ -286,5 +286,4 @@ class Molecule:
         print("  • mol.info()   – tabular dump of all data fields, must be printed")
         print("  • mol.help()   – this message")
         print("\nDynamic attributes include:")
-        cols = ", ".join(sorted(self._fields)[:8]) + ", …"
         print(f"  {cols}")
