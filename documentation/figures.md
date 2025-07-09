@@ -34,6 +34,8 @@ Arguments:
 - `latex_labels` – switch between LaTeX and plain text labels
 - `backend` – `'plotly'` (default) or `'matplotlib'` for the rendering engine
 
+When colouring points with the Matplotlib backend the colour bar is labelled with the variable name.
+
 Depending on the chosen backend the helper exposes either a
 `plotly.graph_objects.Figure` or a `matplotlib.figure.Figure` as `.figure` for
 further customisation.
