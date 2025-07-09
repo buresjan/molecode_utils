@@ -28,7 +28,6 @@ class TwoDRxn:
         color_by: Optional[str] = None,
         group_by: Optional[str] = None,
         title: Optional[str] = None,
-        latex_labels: bool = True,
         fast_predict: bool = True,
         backend: str = "plotly",
     ) -> None:
@@ -38,7 +37,6 @@ class TwoDRxn:
         self.model = model
         self.color_by = color_by
         self.group_by = group_by
-        self.latex_labels = latex_labels
         self.backend = backend
 
         need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
@@ -205,7 +203,6 @@ class TwoDMol:
         color_by: Optional[str] = None,
         group_by: Optional[str] = None,
         title: Optional[str] = None,
-        latex_labels: bool = True,
         backend: str = "plotly",
     ) -> None:
         self.dataset = dataset
@@ -213,7 +210,6 @@ class TwoDMol:
         self.y = y
         self.color_by = color_by
         self.group_by = group_by
-        self.latex_labels = latex_labels
         self.backend = backend
 
         df = dataset.molecules_df()
@@ -288,7 +284,6 @@ class ThreeDRxn:
         color_by: Optional[str] = None,
         group_by: Optional[str] = None,
         title: Optional[str] = None,
-        latex_labels: bool = True,
         fast_predict: bool = True,
         backend: str = "plotly",
     ) -> None:
@@ -299,7 +294,6 @@ class ThreeDRxn:
         self.model = model
         self.color_by = color_by
         self.group_by = group_by
-        self.latex_labels = latex_labels
         self.backend = backend
 
         need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
@@ -325,9 +319,9 @@ class ThreeDRxn:
 
         self.title = title or TwoDRxn._make_title(x, y)
         labels = {
-            x: TwoDRxn._make_label(x, latex=self.latex_labels),
-            y: TwoDRxn._make_label(y, latex=self.latex_labels),
-            z: TwoDRxn._make_label(z, latex=self.latex_labels),
+            x: TwoDRxn._make_label(x, latex=False),
+            y: TwoDRxn._make_label(y, latex=False),
+            z: TwoDRxn._make_label(z, latex=False),
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
@@ -341,7 +335,7 @@ class ThreeDRxn:
                 title=self.title,
                 hover_data=hover_cols,
                 template="plotly_white",
-                height=700,
+                height=900,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -370,7 +364,7 @@ class ThreeDRxn:
         """Build a matplotlib 3D scatter plot."""
         if self.group_by:
             groups = list(df[self.group_by].unique())
-            fig = plt.figure(figsize=(6 * len(groups), 5))
+            fig = plt.figure(figsize=(7 * len(groups), 6))
             axes = []
             for idx, grp in enumerate(groups, 1):
                 ax = fig.add_subplot(1, len(groups), idx, projection="3d")
@@ -390,9 +384,9 @@ class ThreeDRxn:
                 axes.append(ax)
             if color_col:
                 cbar = fig.colorbar(sc, ax=axes)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
         else:
-            fig = plt.figure(figsize=(7, 5))
+            fig = plt.figure(figsize=(8, 6))
             ax = fig.add_subplot(111, projection="3d")
             sc = ax.scatter(
                 df[x],
@@ -407,7 +401,7 @@ class ThreeDRxn:
             ax.set_zlabel(labels[z])
             if color_col:
                 cbar = fig.colorbar(sc, ax=ax)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
         fig.suptitle(self.title)
         return fig
 
@@ -429,7 +423,6 @@ class ThreeDMol:
         color_by: Optional[str] = None,
         group_by: Optional[str] = None,
         title: Optional[str] = None,
-        latex_labels: bool = True,
         backend: str = "plotly",
     ) -> None:
         self.dataset = dataset
@@ -438,7 +431,6 @@ class ThreeDMol:
         self.z = z
         self.color_by = color_by
         self.group_by = group_by
-        self.latex_labels = latex_labels
         self.backend = backend
 
         df = dataset.molecules_df()
@@ -451,9 +443,9 @@ class ThreeDMol:
 
         self.title = title or TwoDRxn._make_title(x, y)
         labels = {
-            x: TwoDRxn._make_label(x, latex=self.latex_labels),
-            y: TwoDRxn._make_label(y, latex=self.latex_labels),
-            z: TwoDRxn._make_label(z, latex=self.latex_labels),
+            x: TwoDRxn._make_label(x, latex=False),
+            y: TwoDRxn._make_label(y, latex=False),
+            z: TwoDRxn._make_label(z, latex=False),
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
@@ -466,7 +458,7 @@ class ThreeDMol:
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=700,
+                height=900,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -495,7 +487,7 @@ class ThreeDMol:
         """Build a matplotlib 3D scatter plot."""
         if self.group_by:
             groups = list(df[self.group_by].unique())
-            fig = plt.figure(figsize=(6 * len(groups), 5))
+            fig = plt.figure(figsize=(7 * len(groups), 6))
             axes = []
             for idx, grp in enumerate(groups, 1):
                 ax = fig.add_subplot(1, len(groups), idx, projection="3d")
@@ -515,9 +507,9 @@ class ThreeDMol:
                 axes.append(ax)
             if color_col:
                 cbar = fig.colorbar(sc, ax=axes)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
         else:
-            fig = plt.figure(figsize=(7, 5))
+            fig = plt.figure(figsize=(8, 6))
             ax = fig.add_subplot(111, projection="3d")
             sc = ax.scatter(
                 df[x],
@@ -532,7 +524,7 @@ class ThreeDMol:
             ax.set_zlabel(labels[z])
             if color_col:
                 cbar = fig.colorbar(sc, ax=ax)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
         fig.suptitle(self.title)
         return fig
 

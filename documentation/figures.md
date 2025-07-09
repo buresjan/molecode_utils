@@ -34,6 +34,10 @@ Arguments:
 - `latex_labels` – switch between LaTeX and plain text labels
 - `backend` – `'plotly'` (default) or `'matplotlib'` for the rendering engine
 
+Note that Plotly does not render LaTeX in 3D figures. The `ThreeDRxn` and
+`ThreeDMol` helpers therefore always use plain text labels that include the unit
+in square brackets.
+
 When colouring points with the Matplotlib backend the colour bar is labelled with the variable name.
 
 Depending on the chosen backend the helper exposes either a
@@ -92,7 +96,9 @@ ds.close()
 ```
 
 Arguments are the same as for `TwoDRxn` with the additional `z` variable.
-Both Plotly and Matplotlib backends are available.
+Both Plotly and Matplotlib backends are available. Axes labels are formatted in
+plain text with units and the default figure size is larger to fit the longer
+titles.
 
 ## ThreeDMol
 
@@ -116,3 +122,5 @@ ds.close()
 ```
 
 Arguments mirror `TwoDMol` with an extra `z` variable.
+Like `ThreeDRxn`, the labels are always rendered as plain text with units and the
+figure size is increased when using Plotly.
