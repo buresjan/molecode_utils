@@ -1,7 +1,9 @@
 # Tutorial scripts
 
-This folder contains short, self-contained Python scripts that demonstrate how to work with the `molecode_utils` package.
-Each file focuses on a specific part of the API and can be run directly from the project root.
+This folder contains short, self-contained Python scripts that demonstrate how
+to work with the `molecode_utils` package. Each file focuses on a specific part
+of the API and can be run directly from the project root, e.g.
+`python examples/dataset_tutorial.py`.
 
 - **`dataset_tutorial.py`** – loads the example archive and showcases Dataset filtering, slicing and exporting features.
 - **`molecule_tutorial.py`** – inspects a single molecule entry and illustrates unit-aware arithmetic.

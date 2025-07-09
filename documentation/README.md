@@ -1,6 +1,9 @@
 # Molecode Utils Documentation
 
-This directory contains module‑level cheat sheets describing every public feature provided by the package. Each markdown file lists the available helpers and gives short code snippets demonstrating common usage.
+This directory contains module‑level cheat sheets describing every public feature
+provided by the package. Each markdown file lists the available helpers and
+gives short code snippets demonstrating common usage. These notes complement the
+README files located throughout the repository.
 
 Whenever the codebase changes, these documents should be updated so that users (and future contributors) can quickly look up examples.
 
