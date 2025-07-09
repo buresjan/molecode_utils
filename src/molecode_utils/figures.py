@@ -168,7 +168,8 @@ class TwoDRxn:
                 ax.set_xlabel(labels[x])
                 ax.set_ylabel(labels[y])
             if color_col:
-                fig.colorbar(sc, ax=axes)
+                cbar = fig.colorbar(sc, ax=axes)
+                cbar.set_label(self._make_label(color_col, latex=self.latex_labels))
         else:
             fig, ax = plt.subplots(figsize=(7, 5))
             sc = ax.scatter(
@@ -181,7 +182,8 @@ class TwoDRxn:
             ax.set_xlabel(labels[x])
             ax.set_ylabel(labels[y])
             if color_col:
-                fig.colorbar(sc, ax=ax)
+                cbar = fig.colorbar(sc, ax=ax)
+                cbar.set_label(self._make_label(color_col, latex=self.latex_labels))
         fig.suptitle(self.title)
         return fig
 
