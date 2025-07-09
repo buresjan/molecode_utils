@@ -53,5 +53,17 @@ fig = TwoDRxn(
 )
 fig.figure.savefig(ASSETS / "basic_scatter.png")
 fig.show()
+fig.show()
+
+# Matplotlib backend
+fig = TwoDRxn(
+    ds,
+    x="deltaG0",
+    y="computed_barrier",
+    color_by="asynchronicity",
+    backend="matplotlib",
+)
+fig.figure.savefig(ASSETS / "colored_scatter.png")
+fig.show()
 
 # Cleanupds.close()
