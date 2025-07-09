@@ -93,7 +93,7 @@ class MolecodeArchive(contextlib.AbstractContextManager):
         # hand out a copy so callers can mutate without affecting the cache
         return self._mol_df.copy()
 
-    def reactions_df(self, *, add_dataset_str: bool = True) -> pd.DataFrame:
+    def reactions_df(self, *, add_dataset_str: bool = True, add_dataset_main: bool = False) -> pd.DataFrame:
         """
         Return a *copy* of the reactions table.
 
@@ -104,18 +104,26 @@ class MolecodeArchive(contextlib.AbstractContextManager):
             names) is present.  The column will be injected lazily the first
             time it’s requested, even if the DataFrame had already been cached
             earlier without it.
+        add_dataset_main
+            If True, include a ``dataset_main`` column with only the first
+            dataset tag (useful for faster grouping operations).
         """
         # ––––– load & cache on first access –––––––––––––––––––––––––––
         if self._rxn_df is None:
             self._rxn_df = pd.DataFrame(self._h5["reactions"][:])
 
-        # ––––– ensure extra column if requested –––––––––––––––––––––––
-        want_col = add_dataset_str
-        have_col = "datasets_str" in self._rxn_df.columns
-        if want_col and not have_col:
+        # ––––– ensure extra columns if requested ––––––––––––––––––––––
+        if add_dataset_str and "datasets_str" not in self._rxn_df.columns:
             lookup = self._code_lookup
             self._rxn_df["datasets_str"] = [
                 ",".join(lookup.take(arr)) for arr in self._rxn_dataset_codes
+            ]
+        
+        if add_dataset_main and "dataset_main" not in self._rxn_df.columns:
+            lookup = self._code_lookup
+            self._rxn_df["dataset_main"] = [
+                (lookup.take(arr)[0] if len(arr) else "")
+                for arr in self._rxn_dataset_codes
             ]
 
         # always hand out a copy so callers can mutate freely
@@ -246,11 +254,11 @@ class Dataset:
     # ------------------------------------------------------------------
     # DataFrame exports
     # ------------------------------------------------------------------
-    def reactions_df(self) -> pd.DataFrame:
+    def reactions_df(self, *, add_dataset_main: bool = False) -> pd.DataFrame:
         if self._joined_df is None:
             # reactions table with dataset names
             base = self._arc.reactions_df()
-            base = base[base["rxn_idx"].isin(self._rxn_ids)]
+            base = self._arc.reactions_df(add_dataset_main=add_dataset_main)
 
             # bring in molecule-level columns for oxidant and substrate
             mol_df = self._arc.molecules_df()
@@ -266,6 +274,10 @@ class Dataset:
 
             merged = base.merge(ox_df, on="oxid_idx", how="left").merge(sub_df, on="subst_idx", how="left")
             self._joined_df = merged.reset_index(drop=True)
+
+        elif add_dataset_main and "dataset_main" not in self._joined_df.columns:
+            base = self._arc.reactions_df(add_dataset_main=True)
+            self._joined_df["dataset_main"] = base.set_index("rxn_idx").loc[self._joined_df["rxn_idx"], "dataset_main"].values
 
         return self._joined_df.copy()
 

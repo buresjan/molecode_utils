@@ -26,6 +26,7 @@ class TwoDRxn:
         group_by: Optional[str] = None,
         title: Optional[str] = None,
         latex_labels: bool = True,
+        fast_predict: bool = True,
     ) -> None:
         self.dataset = dataset
         self.x = x
@@ -35,11 +36,17 @@ class TwoDRxn:
         self.group_by = group_by
         self.latex_labels = latex_labels
 
-        df = dataset.reactions_df()
+        need_dataset_main = (color_by == "dataset_main" or group_by == "dataset_main")
+        df = dataset.reactions_df(add_dataset_main=need_dataset_main)
         self._decode_strings(df)
         if model is not None:
-            df[f"{model.name}_pred"] = model.predict(dataset)
-            df[f"{model.name}_resid"] = model.residual(dataset)
+            if fast_predict and hasattr(model, "predict_df"):
+                df[f"{model.name}_pred"] = model.predict_df(df)
+                if "computed_barrier" in df.columns:
+                    df[f"{model.name}_resid"] = df[f"{model.name}_pred"] - df["computed_barrier"]
+            else:
+                df[f"{model.name}_pred"] = model.predict(dataset)
+                df[f"{model.name}_resid"] = model.residual(dataset)
         self._df = df
 
         hover_cols = {"rxn_idx": True}

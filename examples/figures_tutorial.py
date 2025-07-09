@@ -26,11 +26,11 @@ fig = TwoDRxn(ds, x='deltaG0', y='computed_barrier', color_by='asynchronicity', 
 fig.figure.write_html(ASSETS / 'color_by_async.html')
 fig.show()
 
-# # Including model predictions and plain-text labels
-# m = ModelM4()
-# fig = TwoDRxn(ds, x='computed_barrier', y=f'{m.name}_pred', model=m, group_by='datasets_str', latex_labels=False)
-# fig.figure.write_html(ASSETS / 'with_model.html')
-# fig.show()
-
+# Including model predictions and plain-text labels
+m = ModelM4()
+fig = TwoDRxn(ds, x='computed_barrier', y=f'{m.name}_pred', model=m, group_by='datasets_str', latex_labels=False)
+fig.figure.write_html(ASSETS / 'with_model.html')
+fig.show()
+    
 # Cleanup
 ds.close()
