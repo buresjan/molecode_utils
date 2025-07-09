@@ -66,3 +66,53 @@ Arguments are the same as for `TwoDRxn` except there is no `model` option.
 You can colour points by any numeric column or facet the plot by a categorical
 field (e.g. the primary dataset tag via `group_by='dataset_main'`).  Both
 Plotly and Matplotlib backends are supported.
+
+## ThreeDRxn
+
+`ThreeDRxn` extends `TwoDRxn` into the third dimension and plots three
+reaction-level variables in a 3D scatter plot.
+
+```python
+from molecode_utils.dataset import Dataset
+from molecode_utils.model import ModelM4
+from molecode_utils.figures import ThreeDRxn
+
+ds = Dataset.from_hdf('data/molecode-data-v0.1.0.h5')
+fig = ThreeDRxn(
+    ds,
+    x='asynchronicity',
+    y='frustration',
+    z='deltaG0',
+    model=ModelM4(),
+    color_by='dataset_main',
+)
+fig.figure.write_html('rxn_scatter3d.html')
+fig.show()
+ds.close()
+```
+
+Arguments are the same as for `TwoDRxn` with the additional `z` variable.
+Both Plotly and Matplotlib backends are available.
+
+## ThreeDMol
+
+`ThreeDMol` mirrors `TwoDMol` for molecules but in 3D.
+
+```python
+from molecode_utils.dataset import Dataset
+from molecode_utils.figures import ThreeDMol
+
+ds = Dataset.from_hdf('data/molecode-data-v0.1.0.h5')
+fig = ThreeDMol(
+    ds,
+    x='pKaRH',
+    y='E_H',
+    z='omega',
+    group_by='dataset_main',
+)
+fig.figure.write_html('mol_scatter3d.html')
+fig.show()
+ds.close()
+```
+
+Arguments mirror `TwoDMol` with an extra `z` variable.
