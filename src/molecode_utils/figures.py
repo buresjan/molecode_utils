@@ -185,7 +185,7 @@ class TwoDRxn:
         fig.suptitle(self.title)
         return fig
 
-    def show(self):
+    def show(self) -> None:
         """Display the figure (shortcut for ``self.figure.show()``)."""
         self.figure.show()
 
@@ -217,13 +217,7 @@ class TwoDMol:
         TwoDRxn._decode_strings(df)
 
         if color_by == "dataset_main" or group_by == "dataset_main":
-            df["dataset_main"] = df["dataset"].apply(
-                lambda v: (
-                    (v[0] if isinstance(v, list) else ast.literal_eval(v)[0])
-                    if v
-                    else ""
-                )
-            )
+            df["dataset_main"] = df["dataset"].apply(self._extract_dataset_main)
 
         self._df = df
 
@@ -259,3 +253,19 @@ class TwoDMol:
             self.figure = TwoDRxn._scatter_matplotlib(self, df, x, y, color_col, labels)
         else:
             raise ValueError("backend must be 'plotly' or 'matplotlib'")
+
+    @staticmethod
+    def _extract_dataset_main(val: object) -> str:
+        """Return the first dataset name from a list or string representation."""
+        if not val:
+            return ""
+        if isinstance(val, list):
+            return str(val[0])
+        text = val.decode() if isinstance(val, (bytes, bytearray)) else str(val)
+        text = text.lstrip(" [\"'")
+        first = text.split(",", 1)[0]
+        return first.strip().strip("'\"")
+
+    def show(self) -> None:
+        """Display the figure (shortcut for ``self.figure.show()``)."""
+        self.figure.show()
