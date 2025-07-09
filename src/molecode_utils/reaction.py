@@ -53,16 +53,16 @@ class Reaction:
         object.__setattr__(self, "oxidant", oxidant)
         object.__setattr__(self, "substrate", substrate)
         object.__setattr__(self, "_fields", dict(fields))
-        object.__setattr__(self, "_frozen", True)   # lock immutability
+        object.__setattr__(self, "_frozen", True)  # lock immutability
 
     # ─────────────────── immutability enforcement ────────────────────
-    def __setattr__(self, name: str, value: Any) -> None:          # pragma: no cover
+    def __setattr__(self, name: str, value: Any) -> None:  # pragma: no cover
         if getattr(self, "_frozen", False):
             raise AttributeError(f"{self.__class__.__name__} instances are immutable")
         object.__setattr__(self, name, value)
 
     # ───────────────────── dynamic attr access ───────────────────────
-    def __getattr__(self, name: str) -> Quantity:                  # pragma: no cover
+    def __getattr__(self, name: str) -> Quantity:  # pragma: no cover
         try:
             return self._fields[name]
         except KeyError as exc:
@@ -70,9 +70,9 @@ class Reaction:
 
     def __getitem__(self, key: str):
         return getattr(self, key)
-    
+
     # tab-completion friendliness
-    def __dir__(self):                                             # pragma: no cover
+    def __dir__(self):  # pragma: no cover
         base = set(super().__dir__())
         extras = {"oxidant", "substrate"}
         return sorted(base | extras | set(self._fields))
@@ -117,21 +117,21 @@ class Reaction:
             }
 
         # --- normalise *row* to a plain dict ------------------------------
-        if isinstance(row, np.void):                         # raw scalar from h5py
+        if isinstance(row, np.void):  # raw scalar from h5py
             row = {name: row[name] for name in row.dtype.names}
 
         elif (
-            hasattr(row, "__getitem__")                      # pandas single-row df
-            and list(row.keys()) == [0]
-            and isinstance(row[0], np.void)
+            isinstance(row, pd.DataFrame)
+            and len(row) == 1
+            and isinstance(row.iloc[0], np.void)
         ):
-            rec = row[0]
+            rec = row.iloc[0]
             row = {name: rec[name] for name in rec.dtype.names}
 
         # --- pull molecule ids first -------------------------------------
-        ox_id   = int(row["oxid_idx"])
-        sub_id  = int(row["subst_idx"])
-        rxn_id  = int(row["rxn_idx"])
+        ox_id = int(row["oxid_idx"])
+        sub_id = int(row["subst_idx"])
+        rxn_id = int(row["rxn_idx"])
 
         def _fallback_mol(prefix: str, idx: int) -> Molecule:
             fields: Dict[str, Quantity] = {}
@@ -153,10 +153,17 @@ class Reaction:
 
         # --- convert remaining columns into Quantity objects -------------
         field_objs: Dict[str, Quantity] = {}
-        SKIP = {"rxn_idx", "oxid_idx", "subst_idx",  # already handled
-                "oxid_smiles", "subst_smiles",       # redundant → go via Molecule
-                "oxid_target_atom", "subst_target_atom",
-                "oxid_target_atom_other_hs", "subst_target_atom_other_hs"}
+        SKIP = {
+            "rxn_idx",
+            "oxid_idx",
+            "subst_idx",  # already handled
+            "oxid_smiles",
+            "subst_smiles",  # redundant → go via Molecule
+            "oxid_target_atom",
+            "subst_target_atom",
+            "oxid_target_atom_other_hs",
+            "subst_target_atom_other_hs",
+        }
 
         for col, val in row.items():
             if isinstance(col, (bytes, bytearray)):
@@ -171,9 +178,8 @@ class Reaction:
 
             field_objs[col] = Quantity(val, units.get(col, "-"))
 
-        return cls(id=rxn_id, fields=field_objs,
-                   oxidant=oxidant, substrate=substrate)
-    
+        return cls(id=rxn_id, fields=field_objs, oxidant=oxidant, substrate=substrate)
+
     def unit(self, field: str) -> str:
         return getattr(self, field).unit
 
@@ -205,13 +211,13 @@ class Reaction:
             "",
         ]
         for name in sorted(self._fields):
-            q     = self._fields[name]
+            q = self._fields[name]
             value = q if not isinstance(q, (Quantity, UnitList)) else q.value
-            unit  = getattr(q, "unit", "-")
+            unit = getattr(q, "unit", "-")
             lines.append(f"{name:<{width}} : {value!s:<20} [{unit}]")
         return "\n".join(lines)
 
-    def help(self) -> None:                                       # pragma: no cover
+    def help(self) -> None:  # pragma: no cover
         """Print a short usage message for interactive sessions."""
         print("Available helpers:")
         print("  • r.info() – tabular dump of reaction-level fields")
@@ -219,5 +225,3 @@ class Reaction:
         print("\nDynamic attributes include:")
         cols = ", ".join(sorted(self._fields)[:8]) + ", …"
         print(f"  {cols}")
-
-    

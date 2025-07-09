@@ -356,6 +356,8 @@ class Dataset:
 
         # -- 2. dataset tag matching ---------------------------------------
         if datasets:
+            if isinstance(datasets, str):
+                datasets = [datasets]
             # build a regex that ORs all dataset tags
             pat = "|".join(re.escape(tag) for tag in datasets)
             mask &= df["datasets_str"].str.contains(pat, case=False, regex=True)

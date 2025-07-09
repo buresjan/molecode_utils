@@ -60,19 +60,17 @@ class UnitList(list):
     # keep old code that used `.value` from breaking
     @property
     def value(self):
-        return self          # self *is* the data
+        return self  # self *is* the data
 
     # friendlier representation in the REPL / logs
     def __repr__(self):
-        return f"{list(self)!r}"        # prints the list only
+        return f"{list(self)!r}"  # prints the list only
 
     # optional: equality check includes the unit
     def __eq__(self, other):
         return (
-            list.__eq__(self, other)
-            and getattr(other, "unit", self.unit) == self.unit
+            list.__eq__(self, other) and getattr(other, "unit", self.unit) == self.unit
         )
-
 
 
 # ────────────────────────────────────────────────────────────────────────
@@ -165,12 +163,12 @@ class Molecule:
             row = {name: row[name] for name in row.dtype.names}
 
         elif (
-                hasattr(row, "__getitem__")                # <-- **changed line**
-                and list(row.keys()) == [0]
-                and isinstance(row[0], np.void)
+            isinstance(row, pd.DataFrame)
+            and len(row) == 1
+            and isinstance(row.iloc[0], np.void)
         ):
-                rec = row[0]
-                row = {name: rec[name] for name in rec.dtype.names}
+            rec = row.iloc[0]
+            row = {name: rec[name] for name in rec.dtype.names}
 
         field_objs: Dict[str, Quantity] = {}
 
@@ -190,13 +188,13 @@ class Molecule:
                 if isinstance(val, (bytes, bytearray)):
                     val = val.decode().rstrip()
                 try:
-                    parsed_list = ast.literal_eval(val)      # normal case
-                    if not isinstance(parsed_list, list):    # sanity
+                    parsed_list = ast.literal_eval(val)  # normal case
+                    if not isinstance(parsed_list, list):  # sanity
                         raise ValueError
                 except (SyntaxError, ValueError):
                     # Fallback: best-effort split of a truncated string
                     parsed_list = [
-                        part.strip(" '\"")                    # remove quotes/spaces
+                        part.strip(" '\"")  # remove quotes/spaces
                         for part in val.strip(" []").split(",")
                         if part.strip()
                     ]
@@ -229,26 +227,25 @@ class Molecule:
                 return q2
             return None
 
-        tgt     = _pick("subst_target_atom", "oxid_target_atom")
-        tgt_hs  = _pick("subst_target_atom_other_hs",
-                        "oxid_target_atom_other_hs")
+        tgt = _pick("subst_target_atom", "oxid_target_atom")
+        tgt_hs = _pick("subst_target_atom_other_hs", "oxid_target_atom_other_hs")
 
         if tgt is not None:
             field_objs["target_atom"] = tgt
         if tgt_hs is not None:
             field_objs["target_atom_other_hs"] = tgt_hs
 
-
         # ── pull out primary key, create instance ─────────────────────
         mol_idx_quant = field_objs.pop("mol_idx")
         return cls(id=mol_idx_quant.value, fields=field_objs)
-    
+
     def unit(self, field: str) -> str:
         return getattr(self, field).unit
-    
+
     def to_dict(self, *, include_units=False):
         if include_units:
             return {k: (q.value, q.unit) for k, q in self._fields.items()}
+
         def _clean(v):
             try:
                 if isinstance(v, float) and np.isnan(v):
@@ -276,12 +273,10 @@ class Molecule:
             Human readable table with values and units.
         """
         lines = [f"Molecule id = {self.id}", ""]
-        for name in sorted(
-            n for n in self._fields if not callable(self._fields[n])
-        ):
+        for name in sorted(n for n in self._fields if not callable(self._fields[n])):
             q = self._fields[name]
             value = q if not isinstance(q, (Quantity, UnitList)) else q.value
-            unit  = getattr(q, "unit", "-")
+            unit = getattr(q, "unit", "-")
             lines.append(f"{name:<{width}} : {value!s:<20} [{unit}]")
         return "\n".join(lines)
 
@@ -291,5 +286,4 @@ class Molecule:
         print("  • mol.info()   – tabular dump of all data fields, must be printed")
         print("  • mol.help()   – this message")
         print("\nDynamic attributes include:")
-        cols = ", ".join(sorted(self._fields)[:8]) + ", …"
-        print(f"  {cols}")
+        cols = ", ".join(sorted(self._fields)[:8]) + ", …"        print(f"  {cols}")
