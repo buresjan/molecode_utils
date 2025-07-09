@@ -37,3 +37,30 @@ Arguments:
 Depending on the chosen backend the helper exposes either a
 `plotly.graph_objects.Figure` or a `matplotlib.figure.Figure` as `.figure` for
 further customisation.
+
+## TwoDMol
+
+`TwoDMol` is the molecule analogue of `TwoDRxn`. It plots any two
+molecule-level columns returned by `Dataset.molecules_df()` in a 2D scatter
+plot.
+
+```python
+from molecode_utils.dataset import Dataset
+from molecode_utils.figures import TwoDMol
+
+ds = Dataset.from_hdf('data/molecode-data-v0.1.0.h5')
+fig = TwoDMol(
+    ds,
+    x='pKaRH',
+    y='E_H',
+    color_by='omega',
+)
+fig.figure.write_html('mol_scatter.html')
+fig.show()
+ds.close()
+```
+
+Arguments are the same as for `TwoDRxn` except there is no `model` option.
+You can colour points by any numeric column or facet the plot by a categorical
+field (e.g. the primary dataset tag via `group_by='dataset_main'`).  Both
+Plotly and Matplotlib backends are supported.

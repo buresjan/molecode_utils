@@ -3,6 +3,7 @@ from __future__ import annotations
 """Simple Plotly-backed figure helpers."""
 
 from typing import Optional
+import ast
 
 import pandas as pd
 import plotly.express as px
@@ -187,3 +188,74 @@ class TwoDRxn:
     def show(self):
         """Display the figure (shortcut for ``self.figure.show()``)."""
         self.figure.show()
+
+
+class TwoDMol:
+    """Basic 2D scatter figure for molecule-level data."""
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        x: str,
+        y: str,
+        color_by: Optional[str] = None,
+        group_by: Optional[str] = None,
+        title: Optional[str] = None,
+        latex_labels: bool = True,
+        backend: str = "plotly",
+    ) -> None:
+        self.dataset = dataset
+        self.x = x
+        self.y = y
+        self.color_by = color_by
+        self.group_by = group_by
+        self.latex_labels = latex_labels
+        self.backend = backend
+
+        df = dataset.molecules_df()
+        TwoDRxn._decode_strings(df)
+
+        if color_by == "dataset_main" or group_by == "dataset_main":
+            df["dataset_main"] = df["dataset"].apply(
+                lambda v: (
+                    (v[0] if isinstance(v, list) else ast.literal_eval(v)[0])
+                    if v
+                    else ""
+                )
+            )
+
+        self._df = df
+
+        self.title = title or TwoDRxn._make_title(x, y)
+        labels = {
+            x: TwoDRxn._make_label(x, latex=self.latex_labels),
+            y: TwoDRxn._make_label(y, latex=self.latex_labels),
+        }
+        color_col = color_by or group_by
+        if self.backend == "plotly":
+            self.figure = px.scatter(
+                df,
+                x=x,
+                y=y,
+                color=color_col,
+                labels=labels,
+                title=self.title,
+                template="plotly_white",
+                height=700,
+            )
+            self.figure.update_layout(
+                hovermode="closest",
+                hoverlabel=dict(bgcolor="white"),
+                xaxis=dict(showline=True, mirror=True, linecolor="black"),
+                yaxis=dict(showline=True, mirror=True, linecolor="black"),
+            )
+            self.figure.update_layout(
+                xaxis_title=TwoDRxn._make_label(x, latex=self.latex_labels),
+                yaxis_title=TwoDRxn._make_label(y, latex=self.latex_labels),
+            )
+            self.figure.update_traces(marker=dict(size=6))
+        elif self.backend == "matplotlib":
+            self.figure = TwoDRxn._scatter_matplotlib(self, df, x, y, color_col, labels)
+        else:
+            raise ValueError("backend must be 'plotly' or 'matplotlib'")

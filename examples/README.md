@@ -13,3 +13,4 @@ of the API and can be run directly from the project root, e.g.
   :meth:`Dataset.filter` calls for sequential data reduction,
   plotting and `ModelM4` evaluation.
 - **`filter_tutorial.py`** – step-by-step guide to the :class:`Filter` helper.
+- **`molecule_figures.py`** – demonstrates the :class:`TwoDMol` scatter helper.
