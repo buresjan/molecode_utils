@@ -12,13 +12,14 @@ This module exposes two convenience classes:
     ``MolecodeArchive``. It provides pandas-like filtering and DataFrame
     export helpers.
 """
+
 from __future__ import annotations
 
 import contextlib
 import json
 import pathlib
 import re
-from typing import Callable, Dict, Iterable, List, Mapping, Sequence
+from typing import Callable, Dict, Iterable, List, Mapping, Sequence, cast
 
 import h5py
 import numpy as np
@@ -61,9 +62,7 @@ class MolecodeArchive(contextlib.AbstractContextManager):
         self._h5 = h5py.File(self._path, "r")
 
         # pre-load dataset-code helpers (used by Dataset.filter)
-        self._code_lookup = np.array(
-            self._h5["metadata/dataset_lookup"]
-        ).astype(str)
+        self._code_lookup = np.array(self._h5["metadata/dataset_lookup"]).astype(str)
         self._rxn_dataset_codes = self._h5["reactions_dataset_codes"][:]
 
         return self
@@ -93,7 +92,9 @@ class MolecodeArchive(contextlib.AbstractContextManager):
         # hand out a copy so callers can mutate without affecting the cache
         return self._mol_df.copy()
 
-    def reactions_df(self, *, add_dataset_str: bool = True, add_dataset_main: bool = False) -> pd.DataFrame:
+    def reactions_df(
+        self, *, add_dataset_str: bool = True, add_dataset_main: bool = False
+    ) -> pd.DataFrame:
         """
         Return a *copy* of the reactions table.
 
@@ -118,7 +119,7 @@ class MolecodeArchive(contextlib.AbstractContextManager):
             self._rxn_df["datasets_str"] = [
                 ",".join(lookup.take(arr)) for arr in self._rxn_dataset_codes
             ]
-        
+
         if add_dataset_main and "dataset_main" not in self._rxn_df.columns:
             lookup = self._code_lookup
             self._rxn_df["dataset_main"] = [
@@ -129,21 +130,20 @@ class MolecodeArchive(contextlib.AbstractContextManager):
         # always hand out a copy so callers can mutate freely
         return self._rxn_df.copy()
 
-
     # −− cached object access −−–––––––––––––––––––––––––––––––––––––––
     def molecule(self, mol_idx: int) -> Molecule:
         if mol_idx in self._mol_cache:
             return self._mol_cache[mol_idx]
 
-        ds     = self._h5["molecules"]
-        mask   = ds["mol_idx"][:] == mol_idx
-        idx    = mask.nonzero()[0]
+        ds = self._h5["molecules"]
+        mask = ds["mol_idx"][:] == mol_idx
+        idx = mask.nonzero()[0]
         if not idx.size:
             raise KeyError(f"mol_idx {mol_idx} not found")
 
-        row    = ds[idx[0]]
-        units  = self._load_units(ds)
-        m_obj  = Molecule.from_row(row, units)
+        row = ds[idx[0]]
+        units = self._load_units(ds)
+        m_obj = Molecule.from_row(row, units)
         self._mol_cache[mol_idx] = m_obj
         return m_obj
 
@@ -151,22 +151,22 @@ class MolecodeArchive(contextlib.AbstractContextManager):
         if rxn_idx in self._rxn_cache:
             return self._rxn_cache[rxn_idx]
 
-        ds     = self._h5["reactions"]
-        mask   = ds["rxn_idx"][:] == rxn_idx
-        idx    = mask.nonzero()[0]
+        ds = self._h5["reactions"]
+        mask = ds["rxn_idx"][:] == rxn_idx
+        idx = mask.nonzero()[0]
         if not idx.size:
             raise KeyError(f"rxn_idx {rxn_idx} not found")
 
-        row    = ds[idx[0]]
-        units  = self._load_units(ds)
+        row = ds[idx[0]]
+        units = self._load_units(ds)
 
         ox_id, sub_id = int(row["oxid_idx"]), int(row["subst_idx"])
         mol_lookup: Mapping[int, Molecule] = {
-            ox_id:  self.molecule(ox_id),
+            ox_id: self.molecule(ox_id),
             sub_id: self.molecule(sub_id),
         }
 
-        r_obj  = Reaction.from_row(row, units, molecule_lookup=mol_lookup)
+        r_obj = Reaction.from_row(row, units, molecule_lookup=mol_lookup)
         self._rxn_cache[rxn_idx] = r_obj
         return r_obj
 
@@ -195,7 +195,8 @@ class Dataset:
     ) -> None:
         self._arc = archive
         self._rxn_ids: List[int] = (
-            list(rxn_idx_list) if rxn_idx_list is not None
+            list(rxn_idx_list)
+            if rxn_idx_list is not None
             else archive.reactions_df(add_dataset_str=False)["rxn_idx"].tolist()
         )
 
@@ -205,7 +206,7 @@ class Dataset:
     @classmethod
     def from_hdf(cls, path: str | pathlib.Path) -> "Dataset":
         arc = MolecodeArchive(path)
-        arc.__enter__()                       # user will close via Dataset.close()
+        arc.__enter__()  # user will close via Dataset.close()
         return cls(arc)
 
     # ------------------------------------------------------------------
@@ -218,6 +219,7 @@ class Dataset:
     # make it context-manager friendly too
     def __enter__(self):  # noqa: D401
         return self
+
     def __exit__(self, exc_type, exc, tb):
         self.close()
 
@@ -243,7 +245,7 @@ class Dataset:
         """Add an *existing* Reaction object to the view (no disk I/O)."""
         if reaction.id not in self._rxn_ids:
             self._rxn_ids.append(reaction.id)
-            self._arc._rxn_cache[reaction.id] = reaction   # share cache
+            self._arc._rxn_cache[reaction.id] = reaction  # share cache
 
     def get_reaction(self, rxn_idx: int) -> Reaction:
         """Return Reaction or raise KeyError if not in *this* view."""
@@ -264,25 +266,31 @@ class Dataset:
             ox_cols = {
                 col: f"oxidant.{col}" for col in mol_df.columns if col != "mol_idx"
             }
-            ox_df = mol_df.rename(columns=ox_cols).rename(columns={"mol_idx": "oxid_idx"})
+            ox_df = mol_df.rename(columns=ox_cols).rename(
+                columns={"mol_idx": "oxid_idx"}
+            )
 
             sub_cols = {
                 col: f"substrate.{col}" for col in mol_df.columns if col != "mol_idx"
             }
-            sub_df = mol_df.rename(columns=sub_cols).rename(columns={"mol_idx": "subst_idx"})
-
-            merged = base.merge(ox_df, on="oxid_idx", how="left").merge(sub_df, on="subst_idx", how="left")
-            merged = (
-                merged.set_index("rxn_idx")
-                .loc[self._rxn_ids]
-                .reset_index()
+            sub_df = mol_df.rename(columns=sub_cols).rename(
+                columns={"mol_idx": "subst_idx"}
             )
+
+            merged = base.merge(ox_df, on="oxid_idx", how="left").merge(
+                sub_df, on="subst_idx", how="left"
+            )
+            merged = merged.set_index("rxn_idx").loc[self._rxn_ids].reset_index()
             self._joined_df = merged
 
         elif add_dataset_main and "dataset_main" not in self._joined_df.columns:
             base = self._arc.reactions_df(add_dataset_main=True)
             base = base[base["rxn_idx"].isin(self._rxn_ids)]
-            self._joined_df["dataset_main"] = base.set_index("rxn_idx").loc[self._joined_df["rxn_idx"], "dataset_main"].values
+            self._joined_df["dataset_main"] = (
+                base.set_index("rxn_idx")
+                .loc[self._joined_df["rxn_idx"], "dataset_main"]
+                .values
+            )
 
         return self._joined_df.copy()
 
@@ -295,9 +303,7 @@ class Dataset:
             Molecule rows from the archive used by the view.
         """
         rxn_df = self.reactions_df()
-        mol_ids = pd.unique(
-            rxn_df[["oxid_idx", "subst_idx"]].values.ravel("K")
-        )
+        mol_ids = pd.unique(rxn_df[["oxid_idx", "subst_idx"]].values.ravel("K"))
         full = self._arc.molecules_df()
         # filter the archive table down to the molecules actually present here
         return full[full["mol_idx"].isin(mol_ids)].reset_index(drop=True)
@@ -346,7 +352,7 @@ class Dataset:
         # -- 1. pandas query ------------------------------------------------
         if query:
             # pandas-style expression evaluated on the reactions table
-            mask &= df.eval(query, engine="python")
+            mask &= cast(pd.Series, df.eval(query, engine="python"))
 
         # -- 2. dataset tag matching ---------------------------------------
         if datasets:
@@ -370,7 +376,7 @@ class Dataset:
                     expr_col = f"`{col}`" if not col.isidentifier() else col
                     expr = f"{expr_col} {sym} {repr(value)}"
                     # evaluate the inequality expression on the DataFrame
-                    mask &= df.eval(expr, engine="python")
+                    mask &= cast(pd.Series, df.eval(expr, engine="python"))
                     break
             else:
                 raise ValueError(f"Bad filter key '{key}' – missing comparison suffix")
@@ -386,9 +392,9 @@ class Dataset:
         return Dataset(self._arc, mask[mask].index.tolist())
 
     # pretty repr
-    def __repr__(self) -> str:        # pragma: no cover
+    def __repr__(self) -> str:  # pragma: no cover
         return f"<Dataset: {len(self)} reactions>"
-    
+
     # ------------------------------------------------------------------
     # convenience attribute access
     # ------------------------------------------------------------------

@@ -1,4 +1,5 @@
 """Convenient wrapper for :meth:`Dataset.filter` calls."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -35,13 +36,13 @@ class Filter:
     substrate: Mapping[str, Any] = field(default_factory=dict)
 
     _op_map = {
-        ">=" : "__ge",
-        "<=" : "__le",
-        ">"  : "__gt",
-        "<"  : "__lt",
-        "==" : "__eq",
-        "="  : "__eq",
-        "!=" : "__ne",
+        ">=": "__ge",
+        "<=": "__le",
+        ">": "__gt",
+        "<": "__lt",
+        "==": "__eq",
+        "=": "__eq",
+        "!=": "__ne",
     }
 
     @staticmethod
@@ -50,19 +51,15 @@ class Filter:
         out: dict[str, Any] = {}
         for raw_key, value in filters.items():
             key = raw_key.strip()
-            # already expressed with __gt/__lt/... -> just prefix
             if "__" in key:
                 col_key = key
             else:
-                col_key = None
-                # check for symbol operators
                 for sym in sorted(Filter._op_map, key=len, reverse=True):
                     if key.endswith(sym):
                         base = key[: -len(sym)].strip()
                         col_key = f"{base}{Filter._op_map[sym]}"
                         break
-                if col_key is None:
-                    # default equality if no operator
+                else:
                     base = key
                     col_key = f"{base}__eq"
             if prefix:
