@@ -273,10 +273,12 @@ class Dataset:
             sub_df = mol_df.rename(columns=sub_cols).rename(columns={"mol_idx": "subst_idx"})
 
             merged = base.merge(ox_df, on="oxid_idx", how="left").merge(sub_df, on="subst_idx", how="left")
+            merged = merged[merged["rxn_idx"].isin(self._rxn_ids)]
             self._joined_df = merged.reset_index(drop=True)
 
         elif add_dataset_main and "dataset_main" not in self._joined_df.columns:
             base = self._arc.reactions_df(add_dataset_main=True)
+            base = base[base["rxn_idx"].isin(self._rxn_ids)]
             self._joined_df["dataset_main"] = base.set_index("rxn_idx").loc[self._joined_df["rxn_idx"], "dataset_main"].values
 
         return self._joined_df.copy()

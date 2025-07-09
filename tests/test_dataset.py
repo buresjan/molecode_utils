@@ -33,3 +33,18 @@ def test_dataset_basic_operations():
         # assert set(filt_vec._rxn_ids) == set(filt_lambda._rxn_ids)
     finally:
         ds.close()
+
+
+def test_reactions_df_subset():
+    ds = Dataset.from_hdf(DATA_PATH)
+    try:
+        sub = ds[:5]
+        df = sub.reactions_df()
+        assert set(df["rxn_idx"]) == set(sub._rxn_ids)
+        mdf = sub.molecules_df()
+        expected = set(
+            df[["oxid_idx", "subst_idx"]].values.ravel("K")
+        )
+        assert set(mdf["mol_idx"]) == expected
+    finally:
+        ds.close()
