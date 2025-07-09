@@ -53,5 +53,9 @@ Additional module usage examples live under `documentation/`. When adding new
 features or modifying behaviour, update the relevant markdown file so that the
 cheat sheets stay accurate.
 
----
-Following this **Agents & Contributor Guide** helps maintain the quality and consistency of Molecode Utils. Thank you for contributing!
+Whenever you introduce changes to the codebase, review the README files across
+the repository (the project README as well as those in subdirectories) and
+update them as necessary. Keeping these entry points current helps users and
+contributors understand the latest functionality.
+
+---Following this **Agents & Contributor Guide** helps maintain the quality and consistency of Molecode Utils. Thank you for contributing!

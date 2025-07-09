@@ -1,6 +1,11 @@
 # molecode_utils Package Overview
 
-This directory contains the Python implementation of the **molecode_utils** package. The package provides a small collection of helper classes for working with the MoleCode HDF5 dataset as well as several simple predictive models.
+This directory contains the Python implementation of the **molecode_utils**
+package. It provides a collection of helper classes for working with the
+MoleCode HDF5 dataset as well as several simple predictive models.
+
+All modules follow PEP&nbsp;8 formatting, use type hints and include
+Numpydoc‑style docstrings.
 
 ## Modules
 
@@ -12,4 +17,7 @@ This directory contains the Python implementation of the **molecode_utils** pack
 - **`constants.py`** – physical constants and unit conversions used across the codebase.
 
 Each module is heavily documented inline; refer to the source for details and usage examples. Tutorial scripts demonstrating typical workflows live under `../examples/`.
+
+For a high level tour of the API see the cheat sheets in
+`../documentation/`.
 
