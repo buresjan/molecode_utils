@@ -1,6 +1,7 @@
 # Figure Helpers Cheatsheet
 
-`molecode_utils.figures` provides simple Plotly based helpers for quick visualisations.
+`molecode_utils.figures` provides simple helpers for quick visualisations using
+either Plotly or Matplotlib.
 
 ## TwoDRxn
 
@@ -12,7 +13,13 @@ from molecode_utils.model import ModelM4
 from molecode_utils.figures import TwoDRxn
 
 ds = Dataset.from_hdf('data/molecode-data-v0.1.0.h5')
-fig = TwoDRxn(ds, x='deltaG0', y='computed_barrier', model=ModelM4(), color_by='dataset_main')
+fig = TwoDRxn(
+    ds,
+    x='deltaG0',
+    y='computed_barrier',
+    model=ModelM4(),
+    color_by='dataset_main',
+)
 fig.figure.write_html('scatter.html')
 fig.show()
 ds.close()
@@ -25,5 +32,8 @@ Arguments:
 - `model` – optional `Model` to include predictions/residuals
 - `color_by` / `group_by` – column used for colouring / faceting
 - `latex_labels` – switch between LaTeX and plain text labels
+- `backend` – `'plotly'` (default) or `'matplotlib'` for the rendering engine
 
-The helper exposes the underlying `plotly.graph_objects.Figure` as `.figure` for further customisation.
+Depending on the chosen backend the helper exposes either a
+`plotly.graph_objects.Figure` or a `matplotlib.figure.Figure` as `.figure` for
+further customisation.

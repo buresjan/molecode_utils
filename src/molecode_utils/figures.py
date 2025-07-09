@@ -6,6 +6,7 @@ from typing import Optional
 
 import pandas as pd
 import plotly.express as px
+import matplotlib.pyplot as plt
 
 from .dataset import Dataset
 from .model import Model
@@ -27,6 +28,7 @@ class TwoDRxn:
         title: Optional[str] = None,
         latex_labels: bool = True,
         fast_predict: bool = True,
+        backend: str = "plotly",
     ) -> None:
         self.dataset = dataset
         self.x = x
@@ -35,15 +37,18 @@ class TwoDRxn:
         self.color_by = color_by
         self.group_by = group_by
         self.latex_labels = latex_labels
+        self.backend = backend
 
-        need_dataset_main = (color_by == "dataset_main" or group_by == "dataset_main")
+        need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
         df = dataset.reactions_df(add_dataset_main=need_dataset_main)
         self._decode_strings(df)
         if model is not None:
             if fast_predict and hasattr(model, "predict_df"):
                 df[f"{model.name}_pred"] = model.predict_df(df)
                 if "computed_barrier" in df.columns:
-                    df[f"{model.name}_resid"] = df[f"{model.name}_pred"] - df["computed_barrier"]
+                    df[f"{model.name}_resid"] = (
+                        df[f"{model.name}_pred"] - df["computed_barrier"]
+                    )
             else:
                 df[f"{model.name}_pred"] = model.predict(dataset)
                 df[f"{model.name}_resid"] = model.residual(dataset)
@@ -61,28 +66,33 @@ class TwoDRxn:
             y: self._make_label(y, latex=self.latex_labels),
         }
         color_col = color_by or group_by
-        self.figure = px.scatter(
-            df,
-            x=x,
-            y=y,
-            color=color_col,
-            labels=labels,
-            title=self.title,
-            hover_data=hover_cols,
-            template="plotly_white",
-            height=700,
-        )
-        self.figure.update_layout(
-            hovermode="closest",
-            hoverlabel=dict(bgcolor="white"),
-            xaxis=dict(showline=True, mirror=True, linecolor="black"),
-            yaxis=dict(showline=True, mirror=True, linecolor="black"),
-        )
-        self.figure.update_layout(
-            xaxis_title=self._make_label(x, latex=self.latex_labels),
-            yaxis_title=self._make_label(y, latex=self.latex_labels),
-        )
-        self.figure.update_traces(marker=dict(size=6))
+        if self.backend == "plotly":
+            self.figure = px.scatter(
+                df,
+                x=x,
+                y=y,
+                color=color_col,
+                labels=labels,
+                title=self.title,
+                hover_data=hover_cols,
+                template="plotly_white",
+                height=700,
+            )
+            self.figure.update_layout(
+                hovermode="closest",
+                hoverlabel=dict(bgcolor="white"),
+                xaxis=dict(showline=True, mirror=True, linecolor="black"),
+                yaxis=dict(showline=True, mirror=True, linecolor="black"),
+            )
+            self.figure.update_layout(
+                xaxis_title=self._make_label(x, latex=self.latex_labels),
+                yaxis_title=self._make_label(y, latex=self.latex_labels),
+            )
+            self.figure.update_traces(marker=dict(size=6))
+        elif self.backend == "matplotlib":
+            self.figure = self._scatter_matplotlib(df, x, y, color_col, labels)
+        else:
+            raise ValueError("backend must be 'plotly' or 'matplotlib'")
 
     @staticmethod
     def _decode_strings(df: pd.DataFrame) -> pd.DataFrame:
@@ -123,6 +133,56 @@ class TwoDRxn:
         mx = variable_metadata.get(x, {}).get("name", x)
         my = variable_metadata.get(y, {}).get("name", y)
         return f"{my} vs {mx}"
+
+    def _scatter_matplotlib(
+        self,
+        df: pd.DataFrame,
+        x: str,
+        y: str,
+        color_col: Optional[str],
+        labels: dict[str, str],
+    ):
+        """Build a matplotlib scatter plot."""
+        if self.group_by:
+            groups = list(df[self.group_by].unique())
+            fig, axes = plt.subplots(
+                1,
+                len(groups),
+                figsize=(5 * len(groups), 5),
+                sharex=True,
+                sharey=True,
+            )
+            if len(groups) == 1:
+                axes = [axes]
+            for ax, grp in zip(axes, groups):
+                sub = df[df[self.group_by] == grp]
+                sc = ax.scatter(
+                    sub[x],
+                    sub[y],
+                    c=sub[color_col] if color_col else None,
+                    cmap="viridis",
+                    s=20,
+                )
+                ax.set_title(str(grp))
+                ax.set_xlabel(labels[x])
+                ax.set_ylabel(labels[y])
+            if color_col:
+                fig.colorbar(sc, ax=axes)
+        else:
+            fig, ax = plt.subplots(figsize=(7, 5))
+            sc = ax.scatter(
+                df[x],
+                df[y],
+                c=df[color_col] if color_col else None,
+                cmap="viridis",
+                s=20,
+            )
+            ax.set_xlabel(labels[x])
+            ax.set_ylabel(labels[y])
+            if color_col:
+                fig.colorbar(sc, ax=ax)
+        fig.suptitle(self.title)
+        return fig
 
     def show(self):
         """Display the figure (shortcut for ``self.figure.show()``)."""
