@@ -13,6 +13,7 @@ dependencies = [
     "numpy",
     "pandas",
     "plotly",
+    "matplotlib",
 ]
 
 [tool.setuptools]
