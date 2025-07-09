@@ -257,7 +257,6 @@ class Dataset:
     def reactions_df(self, *, add_dataset_main: bool = False) -> pd.DataFrame:
         if self._joined_df is None:
             # reactions table with dataset names
-            base = self._arc.reactions_df()
             base = self._arc.reactions_df(add_dataset_main=add_dataset_main)
 
             # bring in molecule-level columns for oxidant and substrate
@@ -273,8 +272,12 @@ class Dataset:
             sub_df = mol_df.rename(columns=sub_cols).rename(columns={"mol_idx": "subst_idx"})
 
             merged = base.merge(ox_df, on="oxid_idx", how="left").merge(sub_df, on="subst_idx", how="left")
-            merged = merged[merged["rxn_idx"].isin(self._rxn_ids)]
-            self._joined_df = merged.reset_index(drop=True)
+            merged = (
+                merged.set_index("rxn_idx")
+                .loc[self._rxn_ids]
+                .reset_index()
+            )
+            self._joined_df = merged
 
         elif add_dataset_main and "dataset_main" not in self._joined_df.columns:
             base = self._arc.reactions_df(add_dataset_main=True)
