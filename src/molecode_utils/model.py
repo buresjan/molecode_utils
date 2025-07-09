@@ -198,6 +198,26 @@ class ModelS(Model):
     def __init__(self, lambda_000: float = 0.0):
         self.lambda_000 = float(lambda_000)
 
+    # ------------------------------------------------------------------
+    # Vectorised prediction on a DataFrame
+    # ------------------------------------------------------------------
+    def predict_df(self, df: pd.DataFrame) -> pd.Series:
+        """Return model predictions for a reaction DataFrame."""
+        lam = self.lambda_000
+        w_R = df.get("RC_formation_energy")
+        w_P = df.get("PC_formation_energy")
+        sigma = df.get("asynchronicity")
+        eta = df.get("frustration")
+        dG0 = df.get("deltaG0")
+
+        pred = (
+            lam / 4.0
+            + 0.5 * (w_R + w_P)
+            + 0.25 * (sigma.abs() - eta.abs())
+            + 0.5 * dG0
+        )
+        return pred.rename(f"{self.name}_pred")
+
     def _predict_one(self, rxn: Reaction) -> float:  # noqa: C901 (complex OK)
         # ── fetch building blocks ─────────────────────────────────–––
         lam = self.lambda_000                      # ← user-supplied constant
@@ -236,6 +256,25 @@ class _MBase(Model):
         wR_xx = _q(getattr(rxn.oxidant, "self_exchange_RC_formation", None))
         wR_yy = _q(getattr(rxn.substrate, "self_exchange_RC_formation", None))
         return 0.5 * (wR_xx + wR_yy)
+    
+    # ------------------------------------------------------------------
+    # DataFrame helpers for vectorised predictions
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _dGxx_yy_df(df: pd.DataFrame) -> pd.Series:
+        return 0.5 * (
+            df["oxidant.self_exchange_barrier"] + df["substrate.self_exchange_barrier"]
+        )
+
+    @staticmethod
+    def _wR_xx_yy_df(df: pd.DataFrame) -> pd.Series:
+        return 0.5 * (
+            df["oxidant.self_exchange_RC_formation"]
+            + df["substrate.self_exchange_RC_formation"]
+        )
+
+    def _linear_term_df(self, df: pd.DataFrame) -> pd.Series:
+        return self._dGxx_yy_df(df) + 0.5 * df["deltaG0"]
 
     # ----------------------------------------------------------------
     # building blocks reused across concrete subclasses
@@ -249,6 +288,9 @@ class ModelM1(_MBase):
 
     name = "M1"
 
+    def predict_df(self, df: pd.DataFrame) -> pd.Series:
+        return self._linear_term_df(df).rename(f"{self.name}_pred")
+
     def _predict_one(self, rxn: Reaction) -> float:
         return self._linear_term(rxn)
 
@@ -257,6 +299,14 @@ class ModelM2(_MBase):
     """M2  – linear model + *formation‑energy* correction Δw."""
 
     name = "M2"
+
+    def predict_df(self, df: pd.DataFrame) -> pd.Series:
+        linear = self._linear_term_df(df)
+        delta_w = (
+            0.5 * (df["RC_formation_energy"] + df["PC_formation_energy"])
+            - self._wR_xx_yy_df(df)
+        )
+        return (linear + delta_w).rename(f"{self.name}_pred")
 
     def _predict_one(self, rxn: Reaction) -> float:
         linear = self._linear_term(rxn)
@@ -270,6 +320,13 @@ class ModelM3(_MBase):
     """M3  – adds the **quadratic Marcus term** f_q."""
 
     name = "M3"
+
+    def predict_df(self, df: pd.DataFrame) -> pd.Series:
+        linear = self._linear_term_df(df)
+        denom = df["oxidant.self_exchange_barrier"] + df["substrate.self_exchange_barrier"]
+        quad = 0.125 * (df["deltaG0"] ** 2) / denom
+        quad = quad.where((denom != 0) & (~pd.isna(denom)))
+        return (linear + quad).rename(f"{self.name}_pred")
 
     def _predict_one(self, rxn: Reaction) -> float:
         linear = self._linear_term(rxn)
@@ -309,3 +366,21 @@ class ModelM4(_MBase):
             quad = 0.125 * (num ** 2) / denom
 
         return linear + delta_w + quad
+    
+    def predict_df(self, df: pd.DataFrame) -> pd.Series:
+        linear = self._linear_term_df(df)
+        w_R_XY = df["RC_formation_energy"]
+        w_P_XY = df["PC_formation_energy"]
+        delta_w = 0.5 * (w_R_XY + w_P_XY) - self._wR_xx_yy_df(df)
+
+        num = df["deltaG0"] + w_P_XY - w_R_XY
+        denom = (
+            df["oxidant.self_exchange_barrier"]
+            + df["substrate.self_exchange_barrier"]
+            - 2 * self._wR_xx_yy_df(df)
+        )
+        quad = 0.125 * (num ** 2) / denom
+        quad = quad.where((denom != 0) & (~pd.isna(denom)))
+
+        return (linear + delta_w + quad).rename(f"{self.name}_pred")
+

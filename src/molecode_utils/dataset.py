@@ -93,7 +93,7 @@ class MolecodeArchive(contextlib.AbstractContextManager):
         # hand out a copy so callers can mutate without affecting the cache
         return self._mol_df.copy()
 
-    def reactions_df(self, *, add_dataset_str: bool = True) -> pd.DataFrame:
+    def reactions_df(self, *, add_dataset_str: bool = True, add_dataset_main: bool = False) -> pd.DataFrame:
         """
         Return a *copy* of the reactions table.
 
@@ -104,18 +104,26 @@ class MolecodeArchive(contextlib.AbstractContextManager):
             names) is present.  The column will be injected lazily the first
             time it’s requested, even if the DataFrame had already been cached
             earlier without it.
+        add_dataset_main
+            If True, include a ``dataset_main`` column with only the first
+            dataset tag (useful for faster grouping operations).
         """
         # ––––– load & cache on first access –––––––––––––––––––––––––––
         if self._rxn_df is None:
             self._rxn_df = pd.DataFrame(self._h5["reactions"][:])
 
-        # ––––– ensure extra column if requested –––––––––––––––––––––––
-        want_col = add_dataset_str
-        have_col = "datasets_str" in self._rxn_df.columns
-        if want_col and not have_col:
+        # ––––– ensure extra columns if requested ––––––––––––––––––––––
+        if add_dataset_str and "datasets_str" not in self._rxn_df.columns:
             lookup = self._code_lookup
             self._rxn_df["datasets_str"] = [
                 ",".join(lookup.take(arr)) for arr in self._rxn_dataset_codes
+            ]
+        
+        if add_dataset_main and "dataset_main" not in self._rxn_df.columns:
+            lookup = self._code_lookup
+            self._rxn_df["dataset_main"] = [
+                (lookup.take(arr)[0] if len(arr) else "")
+                for arr in self._rxn_dataset_codes
             ]
 
         # always hand out a copy so callers can mutate freely
@@ -191,6 +199,9 @@ class Dataset:
             else archive.reactions_df(add_dataset_str=False)["rxn_idx"].tolist()
         )
 
+        # cache for the reactions DataFrame with molecule columns joined in
+        self._joined_df: pd.DataFrame | None = None
+
     @classmethod
     def from_hdf(cls, path: str | pathlib.Path) -> "Dataset":
         arc = MolecodeArchive(path)
@@ -243,9 +254,32 @@ class Dataset:
     # ------------------------------------------------------------------
     # DataFrame exports
     # ------------------------------------------------------------------
-    def reactions_df(self) -> pd.DataFrame:
-        full = self._arc.reactions_df()            # already has datasets_str
-        return full[full["rxn_idx"].isin(self._rxn_ids)].reset_index(drop=True)
+    def reactions_df(self, *, add_dataset_main: bool = False) -> pd.DataFrame:
+        if self._joined_df is None:
+            # reactions table with dataset names
+            base = self._arc.reactions_df()
+            base = self._arc.reactions_df(add_dataset_main=add_dataset_main)
+
+            # bring in molecule-level columns for oxidant and substrate
+            mol_df = self._arc.molecules_df()
+            ox_cols = {
+                col: f"oxidant.{col}" for col in mol_df.columns if col != "mol_idx"
+            }
+            ox_df = mol_df.rename(columns=ox_cols).rename(columns={"mol_idx": "oxid_idx"})
+
+            sub_cols = {
+                col: f"substrate.{col}" for col in mol_df.columns if col != "mol_idx"
+            }
+            sub_df = mol_df.rename(columns=sub_cols).rename(columns={"mol_idx": "subst_idx"})
+
+            merged = base.merge(ox_df, on="oxid_idx", how="left").merge(sub_df, on="subst_idx", how="left")
+            self._joined_df = merged.reset_index(drop=True)
+
+        elif add_dataset_main and "dataset_main" not in self._joined_df.columns:
+            base = self._arc.reactions_df(add_dataset_main=True)
+            self._joined_df["dataset_main"] = base.set_index("rxn_idx").loc[self._joined_df["rxn_idx"], "dataset_main"].values
+
+        return self._joined_df.copy()
 
     def molecules_df(self) -> pd.DataFrame:
         """Return molecules referenced by reactions in this dataset.
@@ -328,7 +362,8 @@ class Dataset:
             for suffix, sym in op_map.items():
                 if key.endswith(suffix):
                     col = key[: -len(suffix)]
-                    expr = f"{col} {sym} {repr(value)}"
+                    expr_col = f"`{col}`" if not col.isidentifier() else col
+                    expr = f"{expr_col} {sym} {repr(value)}"
                     # evaluate the inequality expression on the DataFrame
                     mask &= df.eval(expr, engine="python")
                     break
@@ -348,3 +383,18 @@ class Dataset:
     # pretty repr
     def __repr__(self) -> str:        # pragma: no cover
         return f"<Dataset: {len(self)} reactions>"
+    
+    # ------------------------------------------------------------------
+    # convenience attribute access
+    # ------------------------------------------------------------------
+    def __getattr__(self, name: str):
+        """Return a reaction column as a pandas Series if present."""
+        df = self.reactions_df()
+        if name in df.columns:
+            return df[name]
+        raise AttributeError(name)
+
+    def __dir__(self):  # pragma: no cover - interactive helper
+        base = set(super().__dir__())
+        cols = set(self.reactions_df().columns)
+        return sorted(base | cols)
