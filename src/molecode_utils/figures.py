@@ -8,6 +8,7 @@ import ast
 import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 from .dataset import Dataset
 from .model import Model
@@ -267,6 +268,278 @@ class TwoDMol:
         text = text.lstrip(" [\"'")
         first = text.split(",", 1)[0]
         return first.strip().strip("'\"")
+
+    def show(self) -> None:
+        """Display the figure (shortcut for ``self.figure.show()``)."""
+        self.figure.show()
+
+
+class ThreeDRxn:
+    """Basic 3D scatter figure for reaction-level data."""
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        x: str,
+        y: str,
+        z: str,
+        model: Optional[Model] = None,
+        color_by: Optional[str] = None,
+        group_by: Optional[str] = None,
+        title: Optional[str] = None,
+        latex_labels: bool = True,
+        fast_predict: bool = True,
+        backend: str = "plotly",
+    ) -> None:
+        self.dataset = dataset
+        self.x = x
+        self.y = y
+        self.z = z
+        self.model = model
+        self.color_by = color_by
+        self.group_by = group_by
+        self.latex_labels = latex_labels
+        self.backend = backend
+
+        need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
+        df = dataset.reactions_df(add_dataset_main=need_dataset_main)
+        TwoDRxn._decode_strings(df)
+        if model is not None:
+            if fast_predict and hasattr(model, "predict_df"):
+                df[f"{model.name}_pred"] = model.predict_df(df)
+                if "computed_barrier" in df.columns:
+                    df[f"{model.name}_resid"] = (
+                        df[f"{model.name}_pred"] - df["computed_barrier"]
+                    )
+            else:
+                df[f"{model.name}_pred"] = model.predict(dataset)
+                df[f"{model.name}_resid"] = model.residual(dataset)
+        self._df = df
+
+        hover_cols = {"rxn_idx": True}
+        if "oxidant.smiles" in df.columns:
+            hover_cols["oxidant.smiles"] = True
+        if "substrate.smiles" in df.columns:
+            hover_cols["substrate.smiles"] = True
+
+        self.title = title or TwoDRxn._make_title(x, y)
+        labels = {
+            x: TwoDRxn._make_label(x, latex=self.latex_labels),
+            y: TwoDRxn._make_label(y, latex=self.latex_labels),
+            z: TwoDRxn._make_label(z, latex=self.latex_labels),
+        }
+        color_col = color_by or group_by
+        if self.backend == "plotly":
+            self.figure = px.scatter_3d(
+                df,
+                x=x,
+                y=y,
+                z=z,
+                color=color_col,
+                labels=labels,
+                title=self.title,
+                hover_data=hover_cols,
+                template="plotly_white",
+                height=700,
+            )
+            self.figure.update_layout(
+                hovermode="closest",
+                hoverlabel=dict(bgcolor="white"),
+                scene=dict(
+                    xaxis_title=labels[x],
+                    yaxis_title=labels[y],
+                    zaxis_title=labels[z],
+                ),
+            )
+            self.figure.update_traces(marker=dict(size=4))
+        elif self.backend == "matplotlib":
+            self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
+        else:
+            raise ValueError("backend must be 'plotly' or 'matplotlib'")
+
+    def _scatter_matplotlib_3d(
+        self,
+        df: pd.DataFrame,
+        x: str,
+        y: str,
+        z: str,
+        color_col: Optional[str],
+        labels: dict[str, str],
+    ):
+        """Build a matplotlib 3D scatter plot."""
+        if self.group_by:
+            groups = list(df[self.group_by].unique())
+            fig = plt.figure(figsize=(6 * len(groups), 5))
+            axes = []
+            for idx, grp in enumerate(groups, 1):
+                ax = fig.add_subplot(1, len(groups), idx, projection="3d")
+                sub = df[df[self.group_by] == grp]
+                sc = ax.scatter(
+                    sub[x],
+                    sub[y],
+                    sub[z],
+                    c=sub[color_col] if color_col else None,
+                    cmap="viridis",
+                    s=20,
+                )
+                ax.set_title(str(grp))
+                ax.set_xlabel(labels[x])
+                ax.set_ylabel(labels[y])
+                ax.set_zlabel(labels[z])
+                axes.append(ax)
+            if color_col:
+                cbar = fig.colorbar(sc, ax=axes)
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
+        else:
+            fig = plt.figure(figsize=(7, 5))
+            ax = fig.add_subplot(111, projection="3d")
+            sc = ax.scatter(
+                df[x],
+                df[y],
+                df[z],
+                c=df[color_col] if color_col else None,
+                cmap="viridis",
+                s=20,
+            )
+            ax.set_xlabel(labels[x])
+            ax.set_ylabel(labels[y])
+            ax.set_zlabel(labels[z])
+            if color_col:
+                cbar = fig.colorbar(sc, ax=ax)
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
+        fig.suptitle(self.title)
+        return fig
+
+    def show(self) -> None:
+        """Display the figure (shortcut for ``self.figure.show()``)."""
+        self.figure.show()
+
+
+class ThreeDMol:
+    """Basic 3D scatter figure for molecule-level data."""
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        x: str,
+        y: str,
+        z: str,
+        color_by: Optional[str] = None,
+        group_by: Optional[str] = None,
+        title: Optional[str] = None,
+        latex_labels: bool = True,
+        backend: str = "plotly",
+    ) -> None:
+        self.dataset = dataset
+        self.x = x
+        self.y = y
+        self.z = z
+        self.color_by = color_by
+        self.group_by = group_by
+        self.latex_labels = latex_labels
+        self.backend = backend
+
+        df = dataset.molecules_df()
+        TwoDRxn._decode_strings(df)
+
+        if color_by == "dataset_main" or group_by == "dataset_main":
+            df["dataset_main"] = df["dataset"].apply(TwoDMol._extract_dataset_main)
+
+        self._df = df
+
+        self.title = title or TwoDRxn._make_title(x, y)
+        labels = {
+            x: TwoDRxn._make_label(x, latex=self.latex_labels),
+            y: TwoDRxn._make_label(y, latex=self.latex_labels),
+            z: TwoDRxn._make_label(z, latex=self.latex_labels),
+        }
+        color_col = color_by or group_by
+        if self.backend == "plotly":
+            self.figure = px.scatter_3d(
+                df,
+                x=x,
+                y=y,
+                z=z,
+                color=color_col,
+                labels=labels,
+                title=self.title,
+                template="plotly_white",
+                height=700,
+            )
+            self.figure.update_layout(
+                hovermode="closest",
+                hoverlabel=dict(bgcolor="white"),
+                scene=dict(
+                    xaxis_title=labels[x],
+                    yaxis_title=labels[y],
+                    zaxis_title=labels[z],
+                ),
+            )
+            self.figure.update_traces(marker=dict(size=4))
+        elif self.backend == "matplotlib":
+            self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
+        else:
+            raise ValueError("backend must be 'plotly' or 'matplotlib'")
+
+    def _scatter_matplotlib_3d(
+        self,
+        df: pd.DataFrame,
+        x: str,
+        y: str,
+        z: str,
+        color_col: Optional[str],
+        labels: dict[str, str],
+    ):
+        """Build a matplotlib 3D scatter plot."""
+        if self.group_by:
+            groups = list(df[self.group_by].unique())
+            fig = plt.figure(figsize=(6 * len(groups), 5))
+            axes = []
+            for idx, grp in enumerate(groups, 1):
+                ax = fig.add_subplot(1, len(groups), idx, projection="3d")
+                sub = df[df[self.group_by] == grp]
+                sc = ax.scatter(
+                    sub[x],
+                    sub[y],
+                    sub[z],
+                    c=sub[color_col] if color_col else None,
+                    cmap="viridis",
+                    s=20,
+                )
+                ax.set_title(str(grp))
+                ax.set_xlabel(labels[x])
+                ax.set_ylabel(labels[y])
+                ax.set_zlabel(labels[z])
+                axes.append(ax)
+            if color_col:
+                cbar = fig.colorbar(sc, ax=axes)
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
+        else:
+            fig = plt.figure(figsize=(7, 5))
+            ax = fig.add_subplot(111, projection="3d")
+            sc = ax.scatter(
+                df[x],
+                df[y],
+                df[z],
+                c=df[color_col] if color_col else None,
+                cmap="viridis",
+                s=20,
+            )
+            ax.set_xlabel(labels[x])
+            ax.set_ylabel(labels[y])
+            ax.set_zlabel(labels[z])
+            if color_col:
+                cbar = fig.colorbar(sc, ax=ax)
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
+        fig.suptitle(self.title)
+        return fig
+
+    @staticmethod
+    def _extract_dataset_main(val: object) -> str:
+        """Return the first dataset name from a list or string representation."""
+        return TwoDMol._extract_dataset_main(val)
 
     def show(self) -> None:
         """Display the figure (shortcut for ``self.figure.show()``)."""
