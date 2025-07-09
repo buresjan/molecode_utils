@@ -36,6 +36,7 @@ __all__ = [
 # Helpers
 # ──────────────────────────────────────────────────────────────────────
 
+
 def _q(value: Quantity | Number | None) -> float:
     """Return ``value`` as a bare float.
 
@@ -134,11 +135,9 @@ class Model(ABC):
         # bulk case
         preds = self.predict(item)
         if isinstance(item, Dataset):
-            true_series = (
-                pd.Series(
-                    {rxn.id: _q(rxn.computed_barrier) for rxn in item},
-                    name="computed_barrier",
-                )
+            true_series = pd.Series(
+                {rxn.id: _q(rxn.computed_barrier) for rxn in item},
+                name="computed_barrier",
             )
         else:  # iterable
             rxn_list = list(item)
@@ -166,13 +165,14 @@ class Model(ABC):
         preds = self.predict(data)
 
         # obtain *actual* barriers
-        actual = pd.Series({rxn.id: _q(rxn.computed_barrier) for rxn in data},
-                           name="actual")
-        resid  = preds - actual
+        actual = pd.Series(
+            {rxn.id: _q(rxn.computed_barrier) for rxn in data}, name="actual"
+        )
+        resid = preds - actual
 
         df = pd.concat((preds, actual, resid.rename("residual")), axis=1)
-        df.attrs["MAE"]  = resid.abs().mean()
-        df.attrs["RMSE"] = math.sqrt((resid ** 2).mean())
+        df.attrs["MAE"] = resid.abs().mean()
+        df.attrs["RMSE"] = math.sqrt((resid**2).mean())
         return df
 
     # nicer str() / repr()
@@ -211,16 +211,13 @@ class ModelS(Model):
         dG0 = df.get("deltaG0")
 
         pred = (
-            lam / 4.0
-            + 0.5 * (w_R + w_P)
-            + 0.25 * (sigma.abs() - eta.abs())
-            + 0.5 * dG0
+            lam / 4.0 + 0.5 * (w_R + w_P) + 0.25 * (sigma.abs() - eta.abs()) + 0.5 * dG0
         )
         return pred.rename(f"{self.name}_pred")
 
     def _predict_one(self, rxn: Reaction) -> float:  # noqa: C901 (complex OK)
         # ── fetch building blocks ─────────────────────────────────–––
-        lam = self.lambda_000                      # ← user-supplied constant
+        lam = self.lambda_000  # ← user-supplied constant
         w_R = _q(getattr(rxn, "RC_formation_energy", None))
         w_P = _q(getattr(rxn, "PC_formation_energy", None))
         sigma = _q(getattr(rxn, "asynchronicity", None))
@@ -229,11 +226,9 @@ class ModelS(Model):
 
         # Marcus-style expression (kcal mol⁻¹)
         return (
-            lam / 4.0
-            + 0.5 * (w_R + w_P)
-            + 0.25 * (abs(sigma) - abs(eta))
-            + 0.5 * dG0
+            lam / 4.0 + 0.5 * (w_R + w_P) + 0.25 * (abs(sigma) - abs(eta)) + 0.5 * dG0
         )
+
 
 class _MBase(Model):
     """Helper base‑class for all *M* family models (M1–M4)."""
@@ -246,8 +241,8 @@ class _MBase(Model):
     @staticmethod
     def _dGxx_yy(rxn: Reaction) -> float:
         """½(ΔG‡_XX + ΔG‡_YY)."""
-        dG_xx = _q(rxn.oxidant.self_exchange_barrier)
-        dG_yy = _q(rxn.substrate.self_exchange_barrier)
+        dG_xx = _q(getattr(rxn.oxidant, "self_exchange_barrier", None))
+        dG_yy = _q(getattr(rxn.substrate, "self_exchange_barrier", None))
         return 0.5 * (dG_xx + dG_yy)
 
     @staticmethod
@@ -256,7 +251,7 @@ class _MBase(Model):
         wR_xx = _q(getattr(rxn.oxidant, "self_exchange_RC_formation", None))
         wR_yy = _q(getattr(rxn.substrate, "self_exchange_RC_formation", None))
         return 0.5 * (wR_xx + wR_yy)
-    
+
     # ------------------------------------------------------------------
     # DataFrame helpers for vectorised predictions
     # ------------------------------------------------------------------
@@ -302,10 +297,9 @@ class ModelM2(_MBase):
 
     def predict_df(self, df: pd.DataFrame) -> pd.Series:
         linear = self._linear_term_df(df)
-        delta_w = (
-            0.5 * (df["RC_formation_energy"] + df["PC_formation_energy"])
-            - self._wR_xx_yy_df(df)
-        )
+        delta_w = 0.5 * (
+            df["RC_formation_energy"] + df["PC_formation_energy"]
+        ) - self._wR_xx_yy_df(df)
         return (linear + delta_w).rename(f"{self.name}_pred")
 
     def _predict_one(self, rxn: Reaction) -> float:
@@ -323,19 +317,23 @@ class ModelM3(_MBase):
 
     def predict_df(self, df: pd.DataFrame) -> pd.Series:
         linear = self._linear_term_df(df)
-        denom = df["oxidant.self_exchange_barrier"] + df["substrate.self_exchange_barrier"]
+        denom = (
+            df["oxidant.self_exchange_barrier"] + df["substrate.self_exchange_barrier"]
+        )
         quad = 0.125 * (df["deltaG0"] ** 2) / denom
         quad = quad.where((denom != 0) & (~pd.isna(denom)))
         return (linear + quad).rename(f"{self.name}_pred")
 
     def _predict_one(self, rxn: Reaction) -> float:
         linear = self._linear_term(rxn)
-        dG0    = _q(rxn.deltaG0)
-        denom  = _q(rxn.oxidant.self_exchange_barrier) + _q(rxn.substrate.self_exchange_barrier)
+        dG0 = _q(rxn.deltaG0)
+        denom = _q(getattr(rxn.oxidant, "self_exchange_barrier", None)) + _q(
+            getattr(rxn.substrate, "self_exchange_barrier", None)
+        )
         if math.isnan(denom) or denom == 0:
             quad = math.nan
         else:
-            quad = 0.125 * (dG0 ** 2) / denom
+            quad = 0.125 * (dG0**2) / denom
         return linear + quad
 
 
@@ -345,7 +343,7 @@ class ModelM4(_MBase):
     name = "M4"
 
     def _predict_one(self, rxn: Reaction) -> float:  # noqa: C901 (complexity OK)
-        linear   = self._linear_term(rxn)
+        linear = self._linear_term(rxn)
 
         # Δw – formation energy correction ----------------------------
         w_R_XY = _q(getattr(rxn, "RC_formation_energy", None))
@@ -356,17 +354,17 @@ class ModelM4(_MBase):
         num = dG0_corr = _q(rxn.deltaG0) + w_P_XY - w_R_XY
 
         denom = (
-            _q(rxn.oxidant.self_exchange_barrier)
-            + _q(rxn.substrate.self_exchange_barrier)
+            _q(getattr(rxn.oxidant, "self_exchange_barrier", None))
+            + _q(getattr(rxn.substrate, "self_exchange_barrier", None))
             - self._wR_xx_yy(rxn) * 2  # because _wR_xx_yy already has the ½ factor
         )
         if math.isnan(denom) or denom == 0:
             quad = math.nan
         else:
-            quad = 0.125 * (num ** 2) / denom
+            quad = 0.125 * (num**2) / denom
 
         return linear + delta_w + quad
-    
+
     def predict_df(self, df: pd.DataFrame) -> pd.Series:
         linear = self._linear_term_df(df)
         w_R_XY = df["RC_formation_energy"]
@@ -379,8 +377,7 @@ class ModelM4(_MBase):
             + df["substrate.self_exchange_barrier"]
             - 2 * self._wR_xx_yy_df(df)
         )
-        quad = 0.125 * (num ** 2) / denom
+        quad = 0.125 * (num**2) / denom
         quad = quad.where((denom != 0) & (~pd.isna(denom)))
 
         return (linear + delta_w + quad).rename(f"{self.name}_pred")
-
