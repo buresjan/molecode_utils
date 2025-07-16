@@ -44,3 +44,10 @@ python app.py
 
 The app loads `data/molecode-data-v0.1.0.h5` by default and will be available at
 `http://127.0.0.1:8050/`.
+
+The interface is arranged in four quadrants:
+
+- **Upper left** – filtering controls for narrowing the dataset.
+- **Lower left** – tabs showing dataset info and lookup placeholders.
+- **Upper right** – two configurable scatter plots displayed side by side.
+- **Lower right** – a placeholder for future model analysis features.
