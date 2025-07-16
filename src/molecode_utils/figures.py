@@ -30,6 +30,7 @@ class TwoDRxn:
         title: Optional[str] = None,
         fast_predict: bool = True,
         backend: str = "plotly",
+        latex_labels: bool = True,
     ) -> None:
         self.dataset = dataset
         self.x = x
@@ -38,6 +39,7 @@ class TwoDRxn:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
+        self.latex_labels = latex_labels
 
         need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
         df = dataset.reactions_df(add_dataset_main=need_dataset_main)
@@ -204,6 +206,7 @@ class TwoDMol:
         group_by: Optional[str] = None,
         title: Optional[str] = None,
         backend: str = "plotly",
+        latex_labels: bool = True,
     ) -> None:
         self.dataset = dataset
         self.x = x
@@ -211,6 +214,7 @@ class TwoDMol:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
+        self.latex_labels = latex_labels
 
         df = dataset.molecules_df()
         TwoDRxn._decode_strings(df)
@@ -535,4 +539,85 @@ class ThreeDMol:
 
     def show(self) -> None:
         """Display the figure (shortcut for ``self.figure.show()``)."""
+        self.figure.show()
+
+
+class Histogram:
+    """Simple 1D histogram for dataset variables."""
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        column: str,
+        table: str = "reactions",
+        bins: Optional[int] = None,
+        range_: Optional[tuple[float, float]] = None,
+        color_by: Optional[str] = None,
+        backend: str = "plotly",
+        latex_labels: bool = True,
+    ) -> None:
+        self.dataset = dataset
+        self.column = column
+        self.table = table
+        self.backend = backend
+        self.latex_labels = latex_labels
+        self.color_by = color_by
+
+        if table not in {"reactions", "molecules"}:
+            raise ValueError("table must be 'reactions' or 'molecules'")
+
+        if table == "reactions":
+            need_dataset_main = color_by == "dataset_main"
+            df = dataset.reactions_df(add_dataset_main=need_dataset_main)
+        else:
+            df = dataset.molecules_df()
+            if color_by == "dataset_main":
+                df["dataset_main"] = df["dataset"].apply(TwoDMol._extract_dataset_main)
+        TwoDRxn._decode_strings(df)
+        self._df = df
+
+        labels = {column: TwoDRxn._make_label(column, latex=latex_labels)}
+        self.title = labels[column]
+
+        if backend == "plotly":
+            self.figure = px.histogram(
+                df,
+                x=column,
+                nbins=bins,
+                range_x=range_,
+                color=color_by,
+                labels=labels,
+                title=self.title,
+                template="plotly_white",
+                height=600,
+            )
+            self.figure.update_layout(
+                xaxis_title=labels[column],
+                yaxis_title="count",
+            )
+        elif backend == "matplotlib":
+            fig, ax = plt.subplots(figsize=(7, 5))
+            if color_by:
+                for group, sub in df.groupby(color_by):
+                    ax.hist(
+                        sub[column].dropna(),
+                        bins=bins,
+                        range=range_,
+                        alpha=0.7,
+                        label=str(group),
+                    )
+                ax.legend(title=TwoDRxn._make_label(color_by, latex=False))
+            else:
+                ax.hist(df[column].dropna(), bins=bins, range=range_, color="tab:blue")
+            ax.set_xlabel(labels[column])
+            ax.set_ylabel("count")
+            ax.set_title(self.title)
+            self.figure = fig
+        else:
+            raise ValueError("backend must be 'plotly' or 'matplotlib'")
+
+    def show(self) -> None:
+        """Display the figure (shortcut for ``self.figure.show()``)."""
+
         self.figure.show()

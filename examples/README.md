@@ -15,3 +15,4 @@ of the API and can be run directly from the project root, e.g.
 - **`filter_tutorial.py`** – step-by-step guide to the :class:`Filter` helper.
 - **`molecule_figures.py`** – demonstrates the :class:`TwoDMol` scatter helper.
 - **`three_d_figures.py`** – showcases the :class:`ThreeDRxn` and :class:`ThreeDMol` helpers.
+- **`histogram_tutorial.py`** – demonstrates the :class:`Histogram` helper on both backends.

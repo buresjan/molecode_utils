@@ -124,3 +124,29 @@ ds.close()
 Arguments mirror `TwoDMol` with an extra `z` variable.
 Like `ThreeDRxn`, the labels are always rendered as plain text with units and the
 figure size is increased when using Plotly.
+
+## Histogram
+
+`Histogram` visualises the distribution of a single column. Columns can come
+from either the reactions or molecules table.
+
+```python
+from molecode_utils.dataset import Dataset
+from molecode_utils.figures import Histogram
+
+ds = Dataset.from_hdf('data/molecode-data-v0.1.0.h5')
+fig = Histogram(ds, column='deltaG0', bins=30, color_by='dataset_main')
+fig.figure.write_html('hist_deltaG0.html')
+fig.show()
+ds.close()
+```
+
+Arguments:
+
+- `dataset` – `Dataset` instance
+- `column` – name of the column to plot
+- `table` – `'reactions'` (default) or `'molecules'`
+- `bins` – number of bins
+- `range` – `(min, max)` limits for the bins
+- `color_by` – optional categorical column for separate traces
+- `backend` – `'plotly'` (default) or `'matplotlib'`
