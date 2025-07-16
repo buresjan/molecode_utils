@@ -206,8 +206,8 @@ class ModelS(Model):
         lam = self.lambda_000
         w_R = df.get("RC_formation_energy")
         w_P = df.get("PC_formation_energy")
-        sigma = df.get("asynchronicity")
-        eta = df.get("frustration")
+        eta = df.get("asynchronicity")
+        sigma = df.get("frustration")
         dG0 = df.get("deltaG0")
 
         pred = (
@@ -220,8 +220,8 @@ class ModelS(Model):
         lam = self.lambda_000  # ← user-supplied constant
         w_R = _q(getattr(rxn, "RC_formation_energy", None))
         w_P = _q(getattr(rxn, "PC_formation_energy", None))
-        sigma = _q(getattr(rxn, "asynchronicity", None))
-        eta = _q(getattr(rxn, "frustration", None))
+        eta = _q(getattr(rxn, "asynchronicity", None))
+        sigma = _q(getattr(rxn, "frustration", None))
         dG0 = _q(getattr(rxn, "deltaG0", None))
 
         # Marcus-style expression (kcal mol⁻¹)
