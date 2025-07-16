@@ -573,7 +573,7 @@ class Histogram:
         else:
             df = dataset.molecules_df()
             if color_by == "dataset_main":
-                df["dataset_main"] = df["dataset"].apply(self._extract_dataset_main)
+                df["dataset_main"] = df["dataset"].apply(TwoDMol._extract_dataset_main)
         TwoDRxn._decode_strings(df)
         self._df = df
 
