@@ -11,3 +11,4 @@ Each file focuses on a specific part of the API and can be run directly from the
   :meth:`Dataset.filter` calls for sequential data reduction,
   plotting and `ModelM4` evaluation.
 - **`filter_tutorial.py`** – step-by-step guide to the :class:`Filter` helper.
+- **`dash_slider_demo.py`** – minimal Dash app demonstrating safe component IDs.
