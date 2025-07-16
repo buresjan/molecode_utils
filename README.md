@@ -23,3 +23,16 @@ See [INSTALL.md](INSTALL.md) for installation instructions.
 After installing the package you can explore the tutorials located in the `examples/` folder.
 The tutorials are heavily commented and meant to be run step‑by‑step; they double as documentation for the API.
 
+### Dash integration
+
+When building interactive Dash apps on top of ``molecode_utils``, keep in mind
+that Dash disallows periods (``.``) and curly braces in component IDs. Use the
+``sanitize_id`` helper to convert dataset variable names into safe IDs:
+
+```python
+from molecode_utils import sanitize_id
+safe_id = sanitize_id("slider-oxidant.0O")  # -> 'slider-oxidant-0O'
+```
+
+All callbacks and component declarations should use the sanitized ID.
+
