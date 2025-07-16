@@ -31,3 +31,16 @@ available cheat sheets.
 After installing the package you can explore the tutorials located in the `examples/` folder.
 The tutorials are heavily commented and meant to be run step‑by‑step; they double as documentation for the API.
 
+
+## Running the dashboard
+
+A small Dash application is included for interactive exploration of the example
+MoleCode archive. Install the extra dependencies and start the server:
+
+```bash
+pip install dash dash-bootstrap-components pandas plotly h5py
+python app.py
+```
+
+The app loads `data/molecode-data-v0.1.0.h5` by default and will be available at
+`http://127.0.0.1:8050/`.
