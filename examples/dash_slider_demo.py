@@ -7,7 +7,7 @@ import pathlib
 import dash
 from dash import Dash, dcc, html
 
-from molecode_utils import Dataset, sanitize_id
+from molecode_utils import Dataset, sanitize_id, safe_input, safe_output
 
 H5_PATH = pathlib.Path("data/molecode-data-v0.1.0.h5")
 
@@ -22,8 +22,7 @@ app.layout = html.Div(
     ]
 )
 
-@app.callback(dash.dependencies.Output("output", "children"),
-              [dash.dependencies.Input(slider_id, "value")])
+@app.callback(safe_output("output", "children"), [safe_input(slider_id, "value")])
 def display_value(val):
     return f"Selected value: {val}"
 

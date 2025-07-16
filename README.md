@@ -27,11 +27,19 @@ The tutorials are heavily commented and meant to be run step‑by‑step; they d
 
 When building interactive Dash apps on top of ``molecode_utils``, keep in mind
 that Dash disallows periods (``.``) and curly braces in component IDs. Use the
-``sanitize_id`` helper to convert dataset variable names into safe IDs:
+``sanitize_id`` helper or the ``safe_input``/``safe_output`` convenience
+wrappers to convert dataset variable names into safe IDs:
 
 ```python
-from molecode_utils import sanitize_id
+from molecode_utils import sanitize_id, safe_input, safe_output
+
 safe_id = sanitize_id("slider-oxidant.0O")  # -> 'slider-oxidant-0O'
+
+# alternatively when defining callbacks
+@app.callback(safe_output("slider-oxidant.0O", "value"),
+              safe_input("slider-oxidant.0O", "value"))
+def on_change(val):
+    ...
 ```
 
 All callbacks and component declarations should use the sanitized ID.
