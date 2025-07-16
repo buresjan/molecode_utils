@@ -23,12 +23,9 @@ all_tags = sorted(
     }
 )
 
-DG0_MIN = reaction_df["deltaG0"].min()
-DG0_MAX = reaction_df["deltaG0"].max()
-BAR_MIN = reaction_df["computed_barrier"].min()
-BAR_MAX = reaction_df["computed_barrier"].max()
-SEB_MIN = reaction_df["oxidant.self_exchange_barrier"].min()
-SEB_MAX = reaction_df["oxidant.self_exchange_barrier"].max()
+# Pre-compute ranges for all numeric columns so we can build generic
+# filtering sliders. Each slider spans the actual data range.
+num_ranges = {col: (reaction_df[col].min(), reaction_df[col].max()) for col in num_cols}
 
 
 # -----------------------------------------------------------------------------
@@ -70,39 +67,25 @@ app.layout = html.Div(
                 html.H5("Dataset Filtering"),
                 html.Label("Datasets"),
                 dropdown("dataset-dropdown", all_tags, multi=True),
-                html.Br(),
-                html.Label("deltaG0 range"),
-                dcc.RangeSlider(
-                    DG0_MIN,
-                    DG0_MAX,
-                    step=1,
-                    value=[DG0_MIN, DG0_MAX],
-                    marks=None,
-                    id="dg0-slider",
-                    tooltip={"placement": "bottom"},
-                ),
-                html.Br(),
-                html.Label("computed_barrier range"),
-                dcc.RangeSlider(
-                    BAR_MIN,
-                    BAR_MAX,
-                    step=1,
-                    value=[BAR_MIN, BAR_MAX],
-                    marks=None,
-                    id="barrier-slider",
-                    tooltip={"placement": "bottom"},
-                ),
-                html.Br(),
-                html.Label("oxidant.self_exchange_barrier range"),
-                dcc.RangeSlider(
-                    SEB_MIN,
-                    SEB_MAX,
-                    step=1,
-                    value=[SEB_MIN, SEB_MAX],
-                    marks=None,
-                    id="seb-slider",
-                    tooltip={"placement": "bottom"},
-                ),
+                *[
+                    html.Div(
+                        [
+                            html.Label(f"{col} range"),
+                            dcc.RangeSlider(
+                                num_ranges[col][0],
+                                num_ranges[col][1],
+                                step=(num_ranges[col][1] - num_ranges[col][0]) / 100
+                                or 1,
+                                value=list(num_ranges[col]),
+                                marks=None,
+                                id=f"slider-{col}",
+                                tooltip={"placement": "bottom"},
+                            ),
+                            html.Br(),
+                        ]
+                    )
+                    for col in num_cols
+                ],
             ],
             style={"border": "1px solid #ccc", "padding": "10px", "overflowY": "auto"},
         ),
@@ -111,21 +94,32 @@ app.layout = html.Div(
             [
                 html.Div(
                     [
-                        html.Label("X"),
-                        dropdown("x-select-1", num_cols, value="deltaG0"),
-                        html.Label("Y"),
-                        dropdown("y-select-1", num_cols, value="computed_barrier"),
-                        html.Label("Color"),
-                        dropdown(
-                            "color-select-1",
-                            ["None", "Model Residual"] + list(num_cols),
-                            value="None",
-                        ),
-                        html.Label("Model"),
-                        dropdown(
-                            "model-select-1",
-                            ["None"] + list(MODEL_OPTIONS),
-                            value="None",
+                        html.Div(
+                            [
+                                html.Label("X"),
+                                dropdown("x-select-1", num_cols, value="deltaG0"),
+                                html.Label("Y"),
+                                dropdown(
+                                    "y-select-1", num_cols, value="computed_barrier"
+                                ),
+                                html.Label("Color"),
+                                dropdown(
+                                    "color-select-1",
+                                    ["None", "Model Residual"] + list(num_cols),
+                                    value="None",
+                                ),
+                                html.Label("Model"),
+                                dropdown(
+                                    "model-select-1",
+                                    ["None"] + list(MODEL_OPTIONS),
+                                    value="None",
+                                ),
+                            ],
+                            style={
+                                "display": "grid",
+                                "gridTemplateColumns": "1fr 1fr",
+                                "columnGap": "5px",
+                            },
                         ),
                         dcc.Graph(id="graph1"),
                     ],
@@ -133,21 +127,32 @@ app.layout = html.Div(
                 ),
                 html.Div(
                     [
-                        html.Label("X"),
-                        dropdown("x-select-2", num_cols, value="deltaG0"),
-                        html.Label("Y"),
-                        dropdown("y-select-2", num_cols, value="computed_barrier"),
-                        html.Label("Color"),
-                        dropdown(
-                            "color-select-2",
-                            ["None", "Model Residual"] + list(num_cols),
-                            value="None",
-                        ),
-                        html.Label("Model"),
-                        dropdown(
-                            "model-select-2",
-                            ["None"] + list(MODEL_OPTIONS),
-                            value="None",
+                        html.Div(
+                            [
+                                html.Label("X"),
+                                dropdown("x-select-2", num_cols, value="deltaG0"),
+                                html.Label("Y"),
+                                dropdown(
+                                    "y-select-2", num_cols, value="computed_barrier"
+                                ),
+                                html.Label("Color"),
+                                dropdown(
+                                    "color-select-2",
+                                    ["None", "Model Residual"] + list(num_cols),
+                                    value="None",
+                                ),
+                                html.Label("Model"),
+                                dropdown(
+                                    "model-select-2",
+                                    ["None"] + list(MODEL_OPTIONS),
+                                    value="None",
+                                ),
+                            ],
+                            style={
+                                "display": "grid",
+                                "gridTemplateColumns": "1fr 1fr",
+                                "columnGap": "5px",
+                            },
                         ),
                         dcc.Graph(id="graph2"),
                     ],
@@ -208,28 +213,21 @@ app.layout = html.Div(
 # -----------------------------------------------------------------------------
 # Callbacks
 # -----------------------------------------------------------------------------
+filter_inputs = [Input(f"slider-{c}", "value") for c in num_cols]
+
+
 @app.callback(
     [Output("dataset-info", "children"), Output("filtered-indexes", "data")],
-    [
-        Input("dataset-dropdown", "value"),
-        Input("dg0-slider", "value"),
-        Input("barrier-slider", "value"),
-        Input("seb-slider", "value"),
-    ],
+    [Input("dataset-dropdown", "value")] + filter_inputs,
 )
-def update_filters(datasets, dg0_range, barrier_range, seb_range):
+def update_filters(datasets, *ranges):
     flt = Filter()
     if datasets:
         flt.datasets = datasets
-    if dg0_range:
-        flt.reaction["deltaG0__ge"] = dg0_range[0]
-        flt.reaction["deltaG0__le"] = dg0_range[1]
-    if barrier_range:
-        flt.reaction["computed_barrier__ge"] = barrier_range[0]
-        flt.reaction["computed_barrier__le"] = barrier_range[1]
-    if seb_range:
-        flt.oxidant["self_exchange_barrier__ge"] = seb_range[0]
-        flt.oxidant["self_exchange_barrier__le"] = seb_range[1]
+    for col, rng in zip(num_cols, ranges):
+        if rng:
+            flt.reaction[f"{col}__ge"] = rng[0]
+            flt.reaction[f"{col}__le"] = rng[1]
 
     filtered = flt.apply(full_ds)
 
@@ -255,10 +253,8 @@ def _build_figure(idx_list, x, y, model_name, color_var):
     if color_var and color_var != "None":
         if color_var == "Model Residual" and model:
             color_by = f"{model.name}_resid"
-        else:
+        elif color_var != "Model Residual":
             color_by = color_var
-    elif model and color_var == "Model Residual":
-        color_by = f"{model.name}_resid"
 
     fig = TwoDRxn(ds, x=x, y=y, model=model, color_by=color_by).figure
     return fig
