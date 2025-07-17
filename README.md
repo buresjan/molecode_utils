@@ -47,7 +47,7 @@ The app loads `data/molecode-data-v0.1.0.h5` by default and will be available at
 
 The interface is arranged in four quadrants:
 
-- **Upper left** – filtering controls for narrowing the dataset.
+- **Upper left** – numeric filter fields for narrowing the dataset.
   Click "Apply Filter" to refresh the dataset across the dashboard. The
   dashboard initially shows information and plots for the full dataset.
 - **Lower left** – tabs showing dataset info and lookup placeholders.
@@ -55,4 +55,4 @@ The interface is arranged in four quadrants:
 - **Lower right** – a placeholder for future model analysis features.
 
 The left column uses a **3:2** vertical split while the right column is split
-into two equal halves so that each section maintains its own proportions.
+into two equal halves so that each section maintains its own proportions. Horizontally about 40% of the width is reserved for filters and info, leaving 60% for graphs and analysis.
