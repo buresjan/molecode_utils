@@ -61,152 +61,186 @@ external_stylesheets = [
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = "Molecode Dashboard"
 
+
+def _filter_tile():
+    inputs = [
+        html.Div(
+            [
+                html.Label(
+                    [
+                        col,
+                        html.Span(
+                            " \u2139",
+                            title=f"{num_ranges[col][0]} - {num_ranges[col][1]}",
+                            style={"cursor": "help", "marginLeft": "3px"},
+                        ),
+                    ]
+                ),
+                html.Div(
+                    [
+                        dcc.Input(
+                            id=f"min-{safe_col_ids[col]}",
+                            type="number",
+                            placeholder=str(num_ranges[col][0]),
+                            value=num_ranges[col][0],
+                            style={"width": "45%"},
+                        ),
+                        dcc.Input(
+                            id=f"max-{safe_col_ids[col]}",
+                            type="number",
+                            placeholder=str(num_ranges[col][1]),
+                            value=num_ranges[col][1],
+                            style={"width": "45%", "marginLeft": "5%"},
+                        ),
+                    ],
+                    style={"display": "flex"},
+                ),
+            ],
+        )
+        for col in num_cols
+    ]
+
+    return html.Div(
+        [
+            html.H5("Dataset Filtering"),
+            html.Button(
+                "Apply Filter",
+                id="apply-filter-btn",
+                n_clicks=0,
+                className="btn btn-primary mb-2",
+            ),
+            html.Label("Datasets"),
+            dropdown("dataset-dropdown", all_tags, multi=True),
+            html.Div(
+                inputs,
+                style={
+                    "display": "grid",
+                    "gridTemplateColumns": "repeat(3, 1fr)",
+                    "columnGap": "5px",
+                    "rowGap": "5px",
+                },
+            ),
+        ],
+        style={"border": "1px solid #ccc", "padding": "10px"},
+    )
+
+
+def _graphs_tile():
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label("X"),
+                            dropdown("x-select-1", num_cols, value="deltaG0"),
+                            html.Label("Y"),
+                            dropdown("y-select-1", num_cols, value="computed_barrier"),
+                            html.Label("Color"),
+                            dropdown(
+                                "color-select-1",
+                                ["None", "Model Residual"] + list(num_cols),
+                                value="None",
+                            ),
+                            html.Label("Model"),
+                            dropdown(
+                                "model-select-1",
+                                ["None"] + list(MODEL_OPTIONS),
+                                value="None",
+                            ),
+                        ],
+                        style={
+                            "display": "grid",
+                            "gridTemplateColumns": "1fr 1fr",
+                            "columnGap": "5px",
+                        },
+                    ),
+                    dcc.Graph(id="graph1"),
+                ],
+                style={"width": "50%", "padding": "5px"},
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label("X"),
+                            dropdown("x-select-2", num_cols, value="deltaG0"),
+                            html.Label("Y"),
+                            dropdown("y-select-2", num_cols, value="computed_barrier"),
+                            html.Label("Color"),
+                            dropdown(
+                                "color-select-2",
+                                ["None", "Model Residual"] + list(num_cols),
+                                value="None",
+                            ),
+                            html.Label("Model"),
+                            dropdown(
+                                "model-select-2",
+                                ["None"] + list(MODEL_OPTIONS),
+                                value="None",
+                            ),
+                        ],
+                        style={
+                            "display": "grid",
+                            "gridTemplateColumns": "1fr 1fr",
+                            "columnGap": "5px",
+                        },
+                    ),
+                    dcc.Graph(id="graph2"),
+                ],
+                style={"width": "50%", "padding": "5px"},
+            ),
+        ],
+        style={
+            "display": "flex",
+            "height": "100%",
+            "border": "1px solid #ccc",
+            "overflow": "hidden",
+        },
+    )
+
+
+def _info_tile():
+    return html.Div(
+        [
+            dcc.Tabs(
+                [
+                    dcc.Tab(html.Div(id="dataset-info"), label="Dataset Info"),
+                    dcc.Tab(
+                        html.Div("Molecule lookup coming soon"), label="Molecule Lookup"
+                    ),
+                    dcc.Tab(
+                        html.Div("Reaction lookup coming soon"), label="Reaction Lookup"
+                    ),
+                ]
+            )
+        ],
+        style={"border": "1px solid #ccc", "padding": "10px"},
+    )
+
+
+def _analysis_tile():
+    return html.Div(
+        html.Div(
+            "Model analysis coming soon...",
+            style={"textAlign": "center", "color": "gray"},
+        ),
+        style={
+            "border": "1px solid #ccc",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+        },
+    )
+
+
 app.layout = html.Div(
     [
         dcc.Store(id="filtered-indexes"),
-        # Upper left: filtering controls
-        html.Div(
-            [
-                html.H5("Dataset Filtering"),
-                html.Label("Datasets"),
-                dropdown("dataset-dropdown", all_tags, multi=True),
-                *[
-                    html.Div(
-                        [
-                            html.Label(f"{col} range"),
-                            dcc.RangeSlider(
-                                num_ranges[col][0],
-                                num_ranges[col][1],
-                                step=(num_ranges[col][1] - num_ranges[col][0]) / 100
-                                or 1,
-                                value=list(num_ranges[col]),
-                                marks=None,
-                                id=f"slider-{safe_col_ids[col]}",
-                                tooltip={"placement": "bottom"},
-                            ),
-                            html.Br(),
-                        ]
-                    )
-                    for col in num_cols
-                ],
-                html.Button(
-                    "Apply Filter",
-                    id="apply-filter-btn",
-                    n_clicks=0,
-                    className="btn btn-primary mt-2",
-                ),
-            ],
-            style={"border": "1px solid #ccc", "padding": "10px", "overflowY": "auto"},
-        ),
-        # Upper right: two graphs
-        html.Div(
-            [
-                html.Div(
-                    [
-                        html.Div(
-                            [
-                                html.Label("X"),
-                                dropdown("x-select-1", num_cols, value="deltaG0"),
-                                html.Label("Y"),
-                                dropdown(
-                                    "y-select-1", num_cols, value="computed_barrier"
-                                ),
-                                html.Label("Color"),
-                                dropdown(
-                                    "color-select-1",
-                                    ["None", "Model Residual"] + list(num_cols),
-                                    value="None",
-                                ),
-                                html.Label("Model"),
-                                dropdown(
-                                    "model-select-1",
-                                    ["None"] + list(MODEL_OPTIONS),
-                                    value="None",
-                                ),
-                            ],
-                            style={
-                                "display": "grid",
-                                "gridTemplateColumns": "1fr 1fr",
-                                "columnGap": "5px",
-                            },
-                        ),
-                        dcc.Graph(id="graph1"),
-                    ],
-                    style={"width": "50%", "padding": "5px"},
-                ),
-                html.Div(
-                    [
-                        html.Div(
-                            [
-                                html.Label("X"),
-                                dropdown("x-select-2", num_cols, value="deltaG0"),
-                                html.Label("Y"),
-                                dropdown(
-                                    "y-select-2", num_cols, value="computed_barrier"
-                                ),
-                                html.Label("Color"),
-                                dropdown(
-                                    "color-select-2",
-                                    ["None", "Model Residual"] + list(num_cols),
-                                    value="None",
-                                ),
-                                html.Label("Model"),
-                                dropdown(
-                                    "model-select-2",
-                                    ["None"] + list(MODEL_OPTIONS),
-                                    value="None",
-                                ),
-                            ],
-                            style={
-                                "display": "grid",
-                                "gridTemplateColumns": "1fr 1fr",
-                                "columnGap": "5px",
-                            },
-                        ),
-                        dcc.Graph(id="graph2"),
-                    ],
-                    style={"width": "50%", "padding": "5px"},
-                ),
-            ],
-            style={
-                "display": "flex",
-                "height": "100%",
-                "border": "1px solid #ccc",
-                "overflow": "hidden",
-            },
-        ),
-        # Lower left: dataset info and lookups
-        html.Div(
-            [
-                dcc.Tabs(
-                    [
-                        dcc.Tab(html.Div(id="dataset-info"), label="Dataset Info"),
-                        dcc.Tab(
-                            html.Div("Molecule lookup coming soon"),
-                            label="Molecule Lookup",
-                        ),
-                        dcc.Tab(
-                            html.Div("Reaction lookup coming soon"),
-                            label="Reaction Lookup",
-                        ),
-                    ]
-                )
-            ],
-            style={"border": "1px solid #ccc", "padding": "10px", "overflowY": "auto"},
-        ),
-        # Lower right: placeholder for model analysis
-        html.Div(
-            html.Div(
-                "Model analysis coming soon...",
-                style={"textAlign": "center", "color": "gray"},
-            ),
-            style={
-                "border": "1px solid #ccc",
-                "display": "flex",
-                "alignItems": "center",
-                "justifyContent": "center",
-            },
-        ),
+        _filter_tile(),
+        _graphs_tile(),
+        _info_tile(),
+        _analysis_tile(),
     ],
     style={
         "display": "grid",
@@ -222,7 +256,9 @@ app.layout = html.Div(
 # -----------------------------------------------------------------------------
 # Callbacks
 # -----------------------------------------------------------------------------
-filter_states = [State(f"slider-{safe_col_ids[c]}", "value") for c in num_cols]
+filter_states = [State(f"min-{safe_col_ids[c]}", "value") for c in num_cols] + [
+    State(f"max-{safe_col_ids[c]}", "value") for c in num_cols
+]
 
 
 @app.callback(
@@ -230,14 +266,18 @@ filter_states = [State(f"slider-{safe_col_ids[c]}", "value") for c in num_cols]
     Input("apply-filter-btn", "n_clicks"),
     [State("dataset-dropdown", "value")] + filter_states,
 )
-def update_filters(n_clicks, datasets, *ranges):
+def update_filters(n_clicks, datasets, *values):
     flt = Filter()
     if datasets:
         flt.datasets = datasets
-    for col, rng in zip(num_cols, ranges):
-        if rng:
-            flt.reaction[f"{col}__ge"] = rng[0]
-            flt.reaction[f"{col}__le"] = rng[1]
+    it = iter(values)
+    for col in num_cols:
+        min_v = next(it, None)
+        max_v = next(it, None)
+        if min_v is not None:
+            flt.reaction[f"{col}__ge"] = min_v
+        if max_v is not None:
+            flt.reaction[f"{col}__le"] = max_v
 
     filtered = flt.apply(full_ds)
 
