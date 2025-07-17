@@ -1,6 +1,7 @@
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
+import dash_bootstrap_components as dbc
 
 from molecode_utils.dataset import Dataset
 from molecode_utils.filter import Filter
@@ -56,49 +57,46 @@ def dropdown(id_, options, value=None, multi=False):
 # Layout
 # -----------------------------------------------------------------------------
 external_stylesheets = [
-    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    dbc.themes.BOOTSTRAP,
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
 ]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = "Molecode Dashboard"
 
 
 def _filter_tile():
-    inputs = [
-        html.Div(
-            [
-                html.Label(
-                    [
-                        col,
-                        html.Span(
-                            " \u2139",
-                            title=f"{num_ranges[col][0]} - {num_ranges[col][1]}",
-                            style={"cursor": "help", "marginLeft": "3px"},
-                        ),
-                    ]
-                ),
-                html.Div(
-                    [
-                        dcc.Input(
-                            id=f"min-{safe_col_ids[col]}",
-                            type="number",
-                            placeholder=str(num_ranges[col][0]),
-                            value=num_ranges[col][0],
-                            style={"width": "45%"},
-                        ),
-                        dcc.Input(
-                            id=f"max-{safe_col_ids[col]}",
-                            type="number",
-                            placeholder=str(num_ranges[col][1]),
-                            value=num_ranges[col][1],
-                            style={"width": "45%", "marginLeft": "5%"},
-                        ),
-                    ],
-                    style={"display": "flex"},
-                ),
-            ],
+    inputs = []
+    for col in num_cols:
+        cid = safe_col_ids[col]
+        inputs.append(
+            html.Div(
+                [
+                    html.Label(
+                        [
+                            f"{col} ",
+                            html.I(
+                                className="fa fa-circle-info text-secondary",
+                                id=f"tip-{col}",
+                                style={"cursor": "pointer"},
+                            ),
+                        ]
+                    ),
+                    dbc.Tooltip(
+                        f"{num_ranges[col][0]} – {num_ranges[col][1]}",
+                        target=f"tip-{col}",
+                        placement="right",
+                    ),
+                    dcc.RangeSlider(
+                        id=f"slider-{cid}",
+                        min=num_ranges[col][0],
+                        max=num_ranges[col][1],
+                        value=list(num_ranges[col]),
+                        allowCross=False,
+                        style={"marginTop": "4px"},
+                    ),
+                ]
+            )
         )
-        for col in num_cols
-    ]
 
     return html.Div(
         [
@@ -106,93 +104,66 @@ def _filter_tile():
             html.Button(
                 "Apply Filter",
                 id="apply-filter-btn",
-                n_clicks=0,
-                className="btn btn-primary mb-2",
+                className="btn btn-primary btn-sm mb-2",
             ),
             html.Label("Datasets"),
             dropdown("dataset-dropdown", all_tags, multi=True),
+            html.Div(inputs, style={"display": "grid", "rowGap": "8px"}),
+        ],
+        style={
+            "border": "1px solid #ccc",
+            "padding": "10px",
+            "overflowY": "auto",
+            "minHeight": "0",
+        },
+    )
+
+
+def _graph_panel(idx: int) -> html.Div:
+    return html.Div(
+        [
             html.Div(
-                inputs,
+                [
+                    html.Label("X"),
+                    dropdown(f"x-select-{idx}", num_cols, value="deltaG0"),
+                    html.Label("Y"),
+                    dropdown(f"y-select-{idx}", num_cols, value="computed_barrier"),
+                    html.Label("Color"),
+                    dropdown(
+                        f"color-select-{idx}",
+                        ["None", "Model Residual"] + list(num_cols),
+                        value="None",
+                    ),
+                    html.Label("Model"),
+                    dropdown(
+                        f"model-select-{idx}",
+                        ["None"] + list(MODEL_OPTIONS),
+                        value="None",
+                    ),
+                ],
                 style={
                     "display": "grid",
-                    "gridTemplateColumns": "repeat(3, 1fr)",
+                    "gridTemplateColumns": "1fr 1fr",
                     "columnGap": "5px",
-                    "rowGap": "5px",
                 },
             ),
+            dcc.Graph(id=f"graph{idx}", style={"flex": 1, "width": "100%"}),
         ],
-        style={"border": "1px solid #ccc", "padding": "10px"},
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "flex": 1,
+            "minHeight": "0",
+        },
     )
 
 
 def _graphs_tile():
     return html.Div(
-        [
-            html.Div(
-                [
-                    html.Div(
-                        [
-                            html.Label("X"),
-                            dropdown("x-select-1", num_cols, value="deltaG0"),
-                            html.Label("Y"),
-                            dropdown("y-select-1", num_cols, value="computed_barrier"),
-                            html.Label("Color"),
-                            dropdown(
-                                "color-select-1",
-                                ["None", "Model Residual"] + list(num_cols),
-                                value="None",
-                            ),
-                            html.Label("Model"),
-                            dropdown(
-                                "model-select-1",
-                                ["None"] + list(MODEL_OPTIONS),
-                                value="None",
-                            ),
-                        ],
-                        style={
-                            "display": "grid",
-                            "gridTemplateColumns": "1fr 1fr",
-                            "columnGap": "5px",
-                        },
-                    ),
-                    dcc.Graph(id="graph1"),
-                ],
-                style={"width": "50%", "padding": "5px"},
-            ),
-            html.Div(
-                [
-                    html.Div(
-                        [
-                            html.Label("X"),
-                            dropdown("x-select-2", num_cols, value="deltaG0"),
-                            html.Label("Y"),
-                            dropdown("y-select-2", num_cols, value="computed_barrier"),
-                            html.Label("Color"),
-                            dropdown(
-                                "color-select-2",
-                                ["None", "Model Residual"] + list(num_cols),
-                                value="None",
-                            ),
-                            html.Label("Model"),
-                            dropdown(
-                                "model-select-2",
-                                ["None"] + list(MODEL_OPTIONS),
-                                value="None",
-                            ),
-                        ],
-                        style={
-                            "display": "grid",
-                            "gridTemplateColumns": "1fr 1fr",
-                            "columnGap": "5px",
-                        },
-                    ),
-                    dcc.Graph(id="graph2"),
-                ],
-                style={"width": "50%", "padding": "5px"},
-            ),
-        ],
+        [_graph_panel(1), _graph_panel(2)],
         style={
             "display": "flex",
+            "gap": "10px",
             "height": "100%",
             "border": "1px solid #ccc",
             "overflow": "hidden",
@@ -237,43 +208,52 @@ def _analysis_tile():
 app.layout = html.Div(
     [
         dcc.Store(id="filtered-indexes"),
-        _filter_tile(),
-        _graphs_tile(),
-        _info_tile(),
-        _analysis_tile(),
+        html.Div(
+            [_filter_tile(), _info_tile()],
+            style={
+                "flex": 1,
+                "height": "100%",
+                "display": "grid",
+                "gridTemplateRows": "3fr 2fr",
+                "gap": "10px",
+            },
+        ),
+        html.Div(
+            [_graphs_tile(), _analysis_tile()],
+            style={
+                "flex": 1,
+                "height": "100%",
+                "display": "grid",
+                "gridTemplateRows": "1fr 1fr",
+                "gap": "10px",
+            },
+        ),
     ],
-    style={
-        "display": "grid",
-        "gridTemplateColumns": "1fr 1fr",
-        "gridTemplateRows": "1fr 1fr",
-        "gap": "10px",
-        "height": "100vh",
-        "padding": "10px",
-    },
+    style={"display": "flex", "height": "100vh", "gap": "10px", "padding": "10px"},
 )
 
 
 # -----------------------------------------------------------------------------
 # Callbacks
 # -----------------------------------------------------------------------------
-filter_states = [State(f"min-{safe_col_ids[c]}", "value") for c in num_cols] + [
-    State(f"max-{safe_col_ids[c]}", "value") for c in num_cols
-]
+filter_states = [State(f"slider-{safe_col_ids[c]}", "value") for c in num_cols]
 
 
 @app.callback(
-    [Output("dataset-info", "children"), Output("filtered-indexes", "data")],
+    [Output("filtered-indexes", "data"), Output("dataset-info", "children")],
     Input("apply-filter-btn", "n_clicks"),
-    [State("dataset-dropdown", "value")] + filter_states,
+    State("dataset-dropdown", "value"),
+    *filter_states,
+    prevent_initial_call=True,
 )
-def update_filters(n_clicks, datasets, *values):
+def update_filters(n_clicks, datasets, *ranges):
     flt = Filter()
     if datasets:
         flt.datasets = datasets
-    it = iter(values)
-    for col in num_cols:
-        min_v = next(it, None)
-        max_v = next(it, None)
+    for col, rng in zip(num_cols, ranges):
+        if rng is None:
+            continue
+        min_v, max_v = rng
         if min_v is not None:
             flt.reaction[f"{col}__ge"] = min_v
         if max_v is not None:
@@ -290,7 +270,7 @@ def update_filters(n_clicks, datasets, *values):
         f"Filtered dataset contains {len(filtered)} reactions from "
         f"{len(tags)} datasets, involving {len(filtered.molecules_df())} unique molecules."
     )
-    return info, filtered._rxn_ids
+    return filtered._rxn_ids, info
 
 
 def _build_figure(idx_list, x, y, model_name, color_var):
@@ -307,6 +287,8 @@ def _build_figure(idx_list, x, y, model_name, color_var):
             color_by = color_var
 
     fig = TwoDRxn(ds, x=x, y=y, model=model, color_by=color_by).figure
+    fig.update_layout(margin=dict(l=0, r=0, t=40, b=40), autosize=True)
+    fig.update_layout(coloraxis_colorbar_x=1.02)
     return fig
 
 
