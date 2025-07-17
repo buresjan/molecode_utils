@@ -7,7 +7,13 @@ import plotly.graph_objects as go
 
 from molecode_utils.dataset import Dataset
 from molecode_utils.filter import Filter
-from molecode_utils.figures import TwoDRxn
+from molecode_utils.figures import (
+    TwoDRxn,
+    TwoDMol,
+    ThreeDRxn,
+    ThreeDMol,
+    Histogram,
+)
 from molecode_utils.model import ModelM1, ModelM2, ModelM3, ModelM4
 
 # -----------------------------------------------------------------------------
@@ -171,64 +177,119 @@ def _filter_tile():
     return content
 
 
-def _graph_panel(idx: int) -> html.Div:
+def _figure_panel(idx: int) -> html.Div:
+    """Return a single figure panel for the dashboard."""
+
+    figure_type_dd = dropdown(
+        f"figtype-{idx}",
+        ["TwoDRxn", "TwoDMol", "ThreeDRxn", "ThreeDMol", "Histogram"],
+        value="TwoDRxn",
+    )
+    graph = dcc.Graph(id=f"fig-{idx}", style={"height": "100%", "width": "100%"})
+    controls = html.Div(id=f"controls-{idx}")
     return html.Div(
-        [
-            html.Div(
-                [
-                    html.Label("X"),
-                    dropdown(f"x-select-{idx}", num_cols, value="deltaG0"),
-                    html.Label("Y"),
-                    dropdown(f"y-select-{idx}", num_cols, value="computed_barrier"),
-                    html.Label("Color"),
-                    dropdown(
-                        f"color-select-{idx}",
-                        ["None", "Model Residual"] + list(num_cols),
-                        value="None",
-                    ),
-                    html.Label("Model"),
-                    dropdown(
-                        f"model-select-{idx}",
-                        ["None"] + list(MODEL_OPTIONS),
-                        value="None",
-                    ),
-                ],
-                style={
-                    "display": "grid",
-                    "gridTemplateColumns": "1fr 1fr",
-                    "columnGap": "5px",
-                },
-            ),
-            dcc.Graph(
-                id=f"graph{idx}",
-                style={"flex": 1, "width": "100%", "height": "100%"},
-                config={"responsive": True},
-            ),
-        ],
+        [figure_type_dd, controls, graph],
         style={
             "display": "flex",
             "flexDirection": "column",
-            "flex": "1 1 50%",
-            "minWidth": 0,
             "minHeight": 0,
+            "minWidth": 0,
         },
     )
 
 
-def _graphs_tile():
-    content = html.Div(
-        html.Div(
-            [_graph_panel(1), _graph_panel(2)],
-            style={"display": "flex", "gap": "10px", "height": "100%"},
-        ),
+def _figure_board() -> html.Div:
+    """Container holding the 2×2 grid of figure panels."""
+
+    return html.Div(
+        [_figure_panel(i + 1) for i in range(4)],
         style={
-            "padding": "8px",
+            "display": "grid",
+            "gridTemplateColumns": "1fr 1fr",
+            "gridTemplateRows": "1fr 1fr",
+            "gap": "10px",
             "height": "100%",
+            "padding": "8px",
             "border": "1px solid #ccc",
             "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
         },
     )
-    return content
+
+
+def _model(name: str | None):
+    """Return a model instance for the given name, or ``None``."""
+
+    if not name or name == "None":
+        return None
+    return MODEL_OPTIONS.get(name)
+
+
+def _make_controls(fig_type: str, *, pane: int) -> list[html.Component]:
+    """Return the controls appropriate for a figure type."""
+
+    base_id = lambda name: f"{name}-{pane}"
+    if fig_type in {"TwoDRxn", "TwoDMol"}:
+        return [
+            html.Label("X"),
+            dropdown(base_id("x"), num_cols, value="deltaG0"),
+            html.Label("Y"),
+            dropdown(base_id("y"), num_cols, value="computed_barrier"),
+            html.Label("Color"),
+            dropdown(base_id("color"), ["None"] + list(num_cols), value="None"),
+            html.Label("Model") if "Rxn" in fig_type else None,
+            (
+                dropdown(base_id("model"), ["None"] + list(MODEL_OPTIONS), value="None")
+                if "Rxn" in fig_type
+                else None
+            ),
+        ]
+    if fig_type in {"ThreeDRxn", "ThreeDMol"}:
+        return [
+            html.Label("X"),
+            dropdown(base_id("x"), num_cols, value="deltaG0"),
+            html.Label("Y"),
+            dropdown(base_id("y"), num_cols, value="asynchronicity"),
+            html.Label("Z"),
+            dropdown(base_id("z"), num_cols, value="computed_barrier"),
+            html.Label("Color"),
+            dropdown(base_id("color"), ["None"] + list(num_cols), value="None"),
+            html.Label("Model") if "Rxn" in fig_type else None,
+            (
+                dropdown(base_id("model"), ["None"] + list(MODEL_OPTIONS), value="None")
+                if "Rxn" in fig_type
+                else None
+            ),
+        ]
+    return [
+        html.Label("Variable"),
+        dropdown(base_id("col"), num_cols, value="deltaG0"),
+        html.Label("Bins"),
+        dcc.Input(id=base_id("bins"), type="number", value=50),
+        html.Label("Color"),
+        dropdown(
+            base_id("color"), ["None", "dataset_main"] + list(num_cols), value="None"
+        ),
+    ]
+
+
+@app.callback(Output("controls-1", "children"), Input("figtype-1", "value"))
+def render_controls_1(fig_type: str):
+    return _make_controls(fig_type, pane=1)
+
+
+@app.callback(Output("controls-2", "children"), Input("figtype-2", "value"))
+def render_controls_2(fig_type: str):
+    return _make_controls(fig_type, pane=2)
+
+
+@app.callback(Output("controls-3", "children"), Input("figtype-3", "value"))
+def render_controls_3(fig_type: str):
+    return _make_controls(fig_type, pane=3)
+
+
+@app.callback(Output("controls-4", "children"), Input("figtype-4", "value"))
+def render_controls_4(fig_type: str):
+    return _make_controls(fig_type, pane=4)
 
 
 def _info_tile():
@@ -255,23 +316,6 @@ def _info_tile():
     return content
 
 
-def _analysis_tile():
-    content = html.Div(
-        html.Div(
-            "Model analysis coming soon...",
-            style={"textAlign": "center", "color": "gray"},
-        ),
-        style={
-            "border": "1px solid #ccc",
-            "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
-            "display": "flex",
-            "alignItems": "center",
-            "justifyContent": "center",
-        },
-    )
-    return content
-
-
 app.layout = html.Div(
     [
         dcc.Store(id="filtered-indexes"),
@@ -287,14 +331,11 @@ app.layout = html.Div(
             },
         ),
         html.Div(
-            [_graphs_tile(), _analysis_tile()],
+            [_figure_board()],
             style={
                 "flex": "0 0 60%",
                 "height": "100%",
                 "minWidth": 0,
-                "display": "grid",
-                "gridTemplateRows": "1fr 1fr",
-                "gap": "10px",
             },
         ),
     ],
@@ -365,57 +406,157 @@ def update_filters(n_clicks, datasets, *values):
     return filtered._rxn_ids, info
 
 
-def _build_figure(idx_list, x, y, model_name, color_var):
+def _build_figure(
+    fig_type: str,
+    idx_list,
+    *,
+    x=None,
+    y=None,
+    z=None,
+    column=None,
+    bins=None,
+    model_name=None,
+    color=None,
+):
+    """Construct the appropriate Plotly figure for the chosen type."""
+
     ds = Dataset(full_ds._arc, idx_list) if idx_list else full_ds
-    model = (
-        MODEL_OPTIONS.get(model_name) if model_name and model_name != "None" else None
-    )
+    model = _model(model_name)
 
     color_by = None
-    if color_var and color_var != "None":
-        if color_var == "Model Residual" and model:
+    if color and color != "None":
+        if color == "Model Residual" and model:
             color_by = f"{model.name}_resid"
-        elif color_var != "Model Residual":
-            color_by = color_var
+        else:
+            color_by = color
 
-    if ds.reactions_df().empty:
-        return go.Figure()
+    if fig_type == "TwoDRxn":
+        fig = TwoDRxn(ds, x=x, y=y, model=model, color_by=color_by).figure
+    elif fig_type == "TwoDMol":
+        fig = TwoDMol(ds, x=x, y=y, color_by=color_by).figure
+    elif fig_type == "ThreeDRxn":
+        fig = ThreeDRxn(ds, x=x, y=y, z=z, model=model, color_by=color_by).figure
+    elif fig_type == "ThreeDMol":
+        fig = ThreeDMol(ds, x=x, y=y, z=z, color_by=color_by).figure
+    else:
+        fig = Histogram(
+            ds, column=column, bins=bins, color_by=color_by, table="reactions"
+        ).figure
 
-    fig = TwoDRxn(ds, x=x, y=y, model=model, color_by=color_by).figure
-    fig.update_layout(
-        autosize=True,
-        margin=dict(l=0, r=0, t=40, b=40),
-        coloraxis_colorbar_x=1.02,
-    )
+    fig.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
     return fig
 
 
 @app.callback(
-    Output("graph1", "figure"),
+    Output("fig-1", "figure"),
     [
         Input("filtered-indexes", "data"),
-        Input("x-select-1", "value"),
-        Input("y-select-1", "value"),
-        Input("model-select-1", "value"),
-        Input("color-select-1", "value"),
+        Input("figtype-1", "value"),
+        Input("x-1", "value"),
+        Input("y-1", "value"),
+        Input("z-1", "value"),
+        Input("col-1", "value"),
+        Input("bins-1", "value"),
+        Input("model-1", "value"),
+        Input("color-1", "value"),
     ],
 )
-def refresh_graph1(idx_list, x, y, model_name, color_var):
-    return _build_figure(idx_list, x, y, model_name, color_var)
+def build_fig_1(idx_list, fig_type, x, y, z, col, bins, model, color):
+    return _build_figure(
+        fig_type,
+        idx_list,
+        x=x,
+        y=y,
+        z=z,
+        column=col,
+        bins=bins,
+        model_name=model,
+        color=color,
+    )
 
 
 @app.callback(
-    Output("graph2", "figure"),
+    Output("fig-2", "figure"),
     [
         Input("filtered-indexes", "data"),
-        Input("x-select-2", "value"),
-        Input("y-select-2", "value"),
-        Input("model-select-2", "value"),
-        Input("color-select-2", "value"),
+        Input("figtype-2", "value"),
+        Input("x-2", "value"),
+        Input("y-2", "value"),
+        Input("z-2", "value"),
+        Input("col-2", "value"),
+        Input("bins-2", "value"),
+        Input("model-2", "value"),
+        Input("color-2", "value"),
     ],
 )
-def refresh_graph2(idx_list, x, y, model_name, color_var):
-    return _build_figure(idx_list, x, y, model_name, color_var)
+def build_fig_2(idx_list, fig_type, x, y, z, col, bins, model, color):
+    return _build_figure(
+        fig_type,
+        idx_list,
+        x=x,
+        y=y,
+        z=z,
+        column=col,
+        bins=bins,
+        model_name=model,
+        color=color,
+    )
+
+
+@app.callback(
+    Output("fig-3", "figure"),
+    [
+        Input("filtered-indexes", "data"),
+        Input("figtype-3", "value"),
+        Input("x-3", "value"),
+        Input("y-3", "value"),
+        Input("z-3", "value"),
+        Input("col-3", "value"),
+        Input("bins-3", "value"),
+        Input("model-3", "value"),
+        Input("color-3", "value"),
+    ],
+)
+def build_fig_3(idx_list, fig_type, x, y, z, col, bins, model, color):
+    return _build_figure(
+        fig_type,
+        idx_list,
+        x=x,
+        y=y,
+        z=z,
+        column=col,
+        bins=bins,
+        model_name=model,
+        color=color,
+    )
+
+
+@app.callback(
+    Output("fig-4", "figure"),
+    [
+        Input("filtered-indexes", "data"),
+        Input("figtype-4", "value"),
+        Input("x-4", "value"),
+        Input("y-4", "value"),
+        Input("z-4", "value"),
+        Input("col-4", "value"),
+        Input("bins-4", "value"),
+        Input("model-4", "value"),
+        Input("color-4", "value"),
+    ],
+)
+def build_fig_4(idx_list, fig_type, x, y, z, col, bins, model, color):
+    return _build_figure(
+        fig_type,
+        idx_list,
+        x=x,
+        y=y,
+        z=z,
+        column=col,
+        bins=bins,
+        model_name=model,
+        color=color,
+    )
 
 
 @app.callback(
