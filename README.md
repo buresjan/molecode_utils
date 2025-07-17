@@ -48,6 +48,7 @@ The app loads `data/molecode-data-v0.1.0.h5` by default and will be available at
 The interface is arranged in four quadrants:
 
 - **Upper left** – filtering controls for narrowing the dataset.
+  Click "Apply Filter" to refresh the dataset across the dashboard.
 - **Lower left** – tabs showing dataset info and lookup placeholders.
 - **Upper right** – two configurable scatter plots displayed side by side.
 - **Lower right** – a placeholder for future model analysis features.

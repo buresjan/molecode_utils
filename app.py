@@ -1,6 +1,6 @@
 import dash
 from dash import dcc, html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
 from molecode_utils.dataset import Dataset
 from molecode_utils.filter import Filter
@@ -89,6 +89,12 @@ app.layout = html.Div(
                     )
                     for col in num_cols
                 ],
+                html.Button(
+                    "Apply Filter",
+                    id="apply-filter-btn",
+                    n_clicks=0,
+                    className="btn btn-primary mt-2",
+                ),
             ],
             style={"border": "1px solid #ccc", "padding": "10px", "overflowY": "auto"},
         ),
@@ -216,14 +222,15 @@ app.layout = html.Div(
 # -----------------------------------------------------------------------------
 # Callbacks
 # -----------------------------------------------------------------------------
-filter_inputs = [Input(f"slider-{safe_col_ids[c]}", "value") for c in num_cols]
+filter_states = [State(f"slider-{safe_col_ids[c]}", "value") for c in num_cols]
 
 
 @app.callback(
     [Output("dataset-info", "children"), Output("filtered-indexes", "data")],
-    [Input("dataset-dropdown", "value")] + filter_inputs,
+    Input("apply-filter-btn", "n_clicks"),
+    [State("dataset-dropdown", "value")] + filter_states,
 )
-def update_filters(datasets, *ranges):
+def update_filters(n_clicks, datasets, *ranges):
     flt = Filter()
     if datasets:
         flt.datasets = datasets
