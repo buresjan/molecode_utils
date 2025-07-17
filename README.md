@@ -52,3 +52,6 @@ The interface is arranged in four quadrants:
 - **Lower left** – tabs showing dataset info and lookup placeholders.
 - **Upper right** – two configurable scatter plots displayed side by side.
 - **Lower right** – a placeholder for future model analysis features.
+
+The left column uses a **3:2** vertical split while the right column is split
+into two equal halves so that each section maintains its own proportions.
