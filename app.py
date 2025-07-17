@@ -86,13 +86,15 @@ def _filter_tile():
                         target=f"tip-{col}",
                         placement="right",
                     ),
-                    dcc.RangeSlider(
-                        id=f"slider-{cid}",
-                        min=num_ranges[col][0],
-                        max=num_ranges[col][1],
-                        value=list(num_ranges[col]),
-                        allowCross=False,
-                        style={"marginTop": "4px"},
+                    html.Div(
+                        dcc.RangeSlider(
+                            id=f"slider-{cid}",
+                            min=num_ranges[col][0],
+                            max=num_ranges[col][1],
+                            value=list(num_ranges[col]),
+                            allowCross=False,
+                        ),
+                        style={"marginTop": "4px"}  # ✅ Move style to wrapper Div
                     ),
                 ]
             )
