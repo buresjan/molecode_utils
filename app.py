@@ -85,7 +85,11 @@ def _filter_tile():
                             html.I(
                                 className="fa fa-circle-info text-secondary",
                                 id=f"tip-{col}",
-                                style={"cursor": "pointer", "marginLeft": "2px"},
+                                style={
+                                    "cursor": "pointer",
+                                    "marginLeft": "4px",
+                                    "fontSize": "0.85rem",
+                                },
                             ),
                         ],
                         className="mb-1",
@@ -95,46 +99,53 @@ def _filter_tile():
                         target=f"tip-{col}",
                         placement="right",
                     ),
-                    html.Div(
+                    dbc.InputGroup(
                         [
                             dcc.Input(
                                 id=f"min-{cid}",
                                 type="number",
                                 value=num_ranges[col][0],
-                                className="form-control me-1",
-                                style={"width": "45%"},
+                                className="form-control",
                             ),
+                            dbc.InputGroupText("–"),
                             dcc.Input(
                                 id=f"max-{cid}",
                                 type="number",
                                 value=num_ranges[col][1],
                                 className="form-control",
-                                style={"width": "45%"},
                             ),
                         ],
-                        className="d-flex",
+                        className="mb-2",
                     ),
                 ],
-                className="mb-2",
+                className="filter-row",
             )
         )
 
-    return html.Div(
+    content = html.Div(
         [
             html.Div(
                 [
                     html.H5("Dataset Filtering", className="m-0"),
                     html.Button(
-                        "Apply Filter",
+                        "Apply",
                         id="apply-filter-btn",
                         className="btn btn-primary btn-sm",
+                    ),
+                    html.Button(
+                        "Clear",
+                        id="clear-filter-btn",
+                        className="btn btn-outline-secondary btn-sm ms-2",
                     ),
                 ],
                 style={
                     "display": "flex",
-                    "justifyContent": "space-between",
-                    "alignItems": "baseline",
-                    "marginBottom": "6px",
+                    "alignItems": "center",
+                    "position": "sticky",
+                    "top": 0,
+                    "zIndex": 1,
+                    "background": "white",
+                    "paddingBottom": "4px",
                 },
             ),
             html.Label("Datasets"),
@@ -149,6 +160,7 @@ def _filter_tile():
             "maxHeight": "100%",
         },
     )
+    return dbc.Card(dbc.CardBody(content), className="h-100 shadow-sm")
 
 
 def _graph_panel(idx: int) -> html.Div:
@@ -196,20 +208,18 @@ def _graph_panel(idx: int) -> html.Div:
 
 
 def _graphs_tile():
-    return html.Div(
-        [_graph_panel(1), _graph_panel(2)],
-        style={
-            "display": "flex",
-            "gap": "10px",
-            "height": "100%",
-            "border": "1px solid #ccc",
-            "overflow": "hidden",
-        },
+    content = html.Div(
+        html.Div(
+            [_graph_panel(1), _graph_panel(2)],
+            style={"display": "flex", "gap": "10px", "height": "100%"},
+        ),
+        style={"padding": "8px", "height": "100%"},
     )
+    return dbc.Card(dbc.CardBody(content), className="h-100 shadow-sm")
 
 
 def _info_tile():
-    return html.Div(
+    content = html.Div(
         [
             dcc.Tabs(
                 [
@@ -225,10 +235,11 @@ def _info_tile():
         ],
         style={"border": "1px solid #ccc", "padding": "10px"},
     )
+    return dbc.Card(dbc.CardBody(content), className="h-100 shadow-sm")
 
 
 def _analysis_tile():
-    return html.Div(
+    content = html.Div(
         html.Div(
             "Model analysis coming soon...",
             style={"textAlign": "center", "color": "gray"},
@@ -240,6 +251,7 @@ def _analysis_tile():
             "justifyContent": "center",
         },
     )
+    return dbc.Card(dbc.CardBody(content), className="h-100 shadow-sm")
 
 
 app.layout = html.Div(
@@ -322,9 +334,16 @@ def update_filters(n_clicks, datasets, *values):
         for t in str(entry).split(","):
             tags.add(t.strip())
 
-    info = (
-        f"Filtered dataset contains {len(filtered)} reactions from "
-        f"{len(tags)} datasets, involving {len(filtered.molecules_df())} unique molecules."
+    info = html.Span(
+        [
+            "Filtered dataset contains ",
+            dbc.Badge(len(filtered), color="primary", className="me-1"),
+            "reactions from ",
+            dbc.Badge(len(tags), color="secondary", className="me-1"),
+            "datasets, involving ",
+            dbc.Badge(len(filtered.molecules_df()), color="success", className="me-1"),
+            "unique molecules.",
+        ]
     )
     return filtered._rxn_ids, info
 
@@ -377,6 +396,21 @@ def refresh_graph1(idx_list, x, y, model_name, color_var):
 )
 def refresh_graph2(idx_list, x, y, model_name, color_var):
     return _build_figure(idx_list, x, y, model_name, color_var)
+
+
+@app.callback(
+    Output("dataset-dropdown", "value"),
+    *[Output(f"min-{cid}", "value") for cid in safe_col_ids.values()],
+    *[Output(f"max-{cid}", "value") for cid in safe_col_ids.values()],
+    Input("clear-filter-btn", "n_clicks"),
+    prevent_initial_call=True,
+)
+def clear_all(n):
+    return (
+        None,
+        *[num_ranges[c][0] for c in finite_cols],
+        *[num_ranges[c][1] for c in finite_cols],
+    )
 
 
 if __name__ == "__main__":
