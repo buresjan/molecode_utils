@@ -36,11 +36,8 @@ all_tags = sorted(
 )
 
 # Pre-compute ranges for all numeric columns so we can build generic
-# filtering sliders. Each slider spans the actual data range.
+# filtering inputs. Each pair spans the actual data range.
 num_ranges = {col: (reaction_df[col].min(), reaction_df[col].max()) for col in num_cols}
-
-# Default [min, max] list for quick equality check
-DEFAULT_SLIDER = {col: list(rng) for col, rng in num_ranges.items()}
 
 
 # -----------------------------------------------------------------------------
@@ -88,26 +85,37 @@ def _filter_tile():
                             html.I(
                                 className="fa fa-circle-info text-secondary",
                                 id=f"tip-{col}",
-                                style={"cursor": "pointer"},
+                                style={"cursor": "pointer", "marginLeft": "2px"},
                             ),
-                        ]
+                        ],
+                        className="mb-1",
                     ),
                     dbc.Tooltip(
-                        f"{num_ranges[col][0]} – {num_ranges[col][1]}",
+                        f"Allowed range: {num_ranges[col][0]} – {num_ranges[col][1]}",
                         target=f"tip-{col}",
                         placement="right",
                     ),
                     html.Div(
-                        dcc.RangeSlider(
-                            id=f"slider-{cid}",
-                            min=num_ranges[col][0],
-                            max=num_ranges[col][1],
-                            value=list(num_ranges[col]),
-                            allowCross=False,
-                        ),
-                        style={"marginTop": "4px"},  # ✅ Move style to wrapper Div
+                        [
+                            dcc.Input(
+                                id=f"min-{cid}",
+                                type="number",
+                                value=num_ranges[col][0],
+                                className="form-control me-1",
+                                style={"width": "45%"},
+                            ),
+                            dcc.Input(
+                                id=f"max-{cid}",
+                                type="number",
+                                value=num_ranges[col][1],
+                                className="form-control",
+                                style={"width": "45%"},
+                            ),
+                        ],
+                        className="d-flex",
                     ),
-                ]
+                ],
+                className="mb-2",
             )
         )
 
@@ -131,13 +139,14 @@ def _filter_tile():
             ),
             html.Label("Datasets"),
             dropdown("dataset-dropdown", all_tags, multi=True),
-            html.Div(inputs, style={"display": "grid", "rowGap": "8px"}),
+            html.Div(inputs, style={"display": "grid", "rowGap": "6px"}),
         ],
         style={
             "border": "1px solid #ccc",
             "padding": "10px",
             "overflowY": "auto",
             "minHeight": "0",
+            "maxHeight": "100%",
         },
     )
 
@@ -239,8 +248,9 @@ app.layout = html.Div(
         html.Div(
             [_filter_tile(), _info_tile()],
             style={
-                "flex": 1,
+                "flex": "0 0 40%",
                 "height": "100%",
+                "minWidth": 0,
                 "display": "grid",
                 "gridTemplateRows": "3fr 2fr",
                 "gap": "10px",
@@ -249,8 +259,9 @@ app.layout = html.Div(
         html.Div(
             [_graphs_tile(), _analysis_tile()],
             style={
-                "flex": 1,
+                "flex": "0 0 60%",
                 "height": "100%",
+                "minWidth": 0,
                 "display": "grid",
                 "gridTemplateRows": "1fr 1fr",
                 "gap": "10px",
@@ -264,7 +275,15 @@ app.layout = html.Div(
 # -----------------------------------------------------------------------------
 # Callbacks
 # -----------------------------------------------------------------------------
-filter_states = [State(f"slider-{safe_col_ids[c]}", "value") for c in finite_cols]
+filter_states = []
+for col in finite_cols:
+    cid = safe_col_ids[col]
+    filter_states.extend(
+        [
+            State(f"min-{cid}", "value"),
+            State(f"max-{cid}", "value"),
+        ]
+    )
 
 
 @app.callback(
@@ -273,23 +292,24 @@ filter_states = [State(f"slider-{safe_col_ids[c]}", "value") for c in finite_col
     State("dataset-dropdown", "value"),
     *filter_states,
 )
-def update_filters(n_clicks, datasets, *ranges):
+def update_filters(n_clicks, datasets, *values):
     if n_clicks is None:
         filtered = full_ds
     else:
         flt = Filter()
         if datasets:
             flt.datasets = datasets
-        for col, rng in zip(finite_cols, ranges):
-            if rng is None or list(rng) == DEFAULT_SLIDER[col]:
-                # Slider untouched – skip this column completely
+        it = iter(values)
+        for col in finite_cols:
+            min_v, max_v = next(it), next(it)
+
+            if (min_v, max_v) == (num_ranges[col][0], num_ranges[col][1]):
                 continue
 
-            min_v, max_v = rng
             if min_v is not None:
-                flt.reaction[f"{col}__ge"] = min_v
+                flt.reaction[f"{col}__ge"] = float(min_v)
             if max_v is not None:
-                flt.reaction[f"{col}__le"] = max_v
+                flt.reaction[f"{col}__le"] = float(max_v)
 
         # If no constraints and no datasets selected, use the full dataset
         if not flt.reaction and not datasets:
