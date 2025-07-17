@@ -39,6 +39,9 @@ all_tags = sorted(
 # filtering sliders. Each slider spans the actual data range.
 num_ranges = {col: (reaction_df[col].min(), reaction_df[col].max()) for col in num_cols}
 
+# Default [min, max] list for quick equality check
+DEFAULT_SLIDER = {col: list(rng) for col, rng in num_ranges.items()}
+
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -278,15 +281,21 @@ def update_filters(n_clicks, datasets, *ranges):
         if datasets:
             flt.datasets = datasets
         for col, rng in zip(finite_cols, ranges):
-            if rng is None:
+            if rng is None or list(rng) == DEFAULT_SLIDER[col]:
+                # Slider untouched – skip this column completely
                 continue
+
             min_v, max_v = rng
             if min_v is not None:
                 flt.reaction[f"{col}__ge"] = min_v
             if max_v is not None:
                 flt.reaction[f"{col}__le"] = max_v
 
-        filtered = flt.apply(full_ds)
+        # If no constraints and no datasets selected, use the full dataset
+        if not flt.reaction and not datasets:
+            filtered = full_ds
+        else:
+            filtered = flt.apply(full_ds)
 
     tags = set()
     for entry in filtered.reactions_df()["datasets_str"]:
