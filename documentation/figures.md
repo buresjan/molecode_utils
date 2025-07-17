@@ -31,12 +31,13 @@ Arguments:
 - `x`, `y` – column names from `reactions_df()`
 - `model` – optional `Model` to include predictions/residuals
 - `color_by` / `group_by` – column used for colouring / faceting
-- `latex_labels` – switch between LaTeX and plain text labels
+- `latex_labels` – if `True` and the backend is Matplotlib, axis labels are
+  rendered with LaTeX. Plotly always uses the Unicode alternatives.
 - `backend` – `'plotly'` (default) or `'matplotlib'` for the rendering engine
 
-Note that Plotly does not render LaTeX in 3D figures. The `ThreeDRxn` and
-`ThreeDMol` helpers therefore always use plain text labels that include the unit
-in square brackets.
+Plotly figures use the Unicode labels from `variable_metadata` since LaTeX is
+not reliably rendered by the browser. Matplotlib can still render LaTeX if
+enabled.
 
 When colouring points with the Matplotlib backend the colour bar is labelled with the variable name.
 

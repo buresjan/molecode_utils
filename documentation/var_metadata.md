@@ -14,4 +14,6 @@ Each entry provides:
 
 - `name` – descriptive label
 - `latex` – LaTeX formatted label
+- `unicode` – Unicode label used with Plotly
 - `unit_name` / `unit_latex` – textual / LaTeX unit
+- `unit_unicode` – textual unit for Plotly ("-" for dimensionless)
