@@ -15,6 +15,9 @@ full_ds = Dataset.from_hdf(DATA_PATH)
 
 reaction_df = full_ds.reactions_df()
 num_cols = reaction_df.select_dtypes(include="number").columns
+
+safe_col_ids = {col: col.replace(".", "_") for col in num_cols}
+
 all_tags = sorted(
     {
         tag.strip()
@@ -78,7 +81,7 @@ app.layout = html.Div(
                                 or 1,
                                 value=list(num_ranges[col]),
                                 marks=None,
-                                id=f"slider-{col}",
+                                id=f"slider-{safe_col_ids[col]}",
                                 tooltip={"placement": "bottom"},
                             ),
                             html.Br(),
@@ -213,7 +216,7 @@ app.layout = html.Div(
 # -----------------------------------------------------------------------------
 # Callbacks
 # -----------------------------------------------------------------------------
-filter_inputs = [Input(f"slider-{c}", "value") for c in num_cols]
+filter_inputs = [Input(f"slider-{safe_col_ids[c]}", "value") for c in num_cols]
 
 
 @app.callback(
