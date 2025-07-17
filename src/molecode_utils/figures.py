@@ -39,7 +39,8 @@ class TwoDRxn:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
-        self.latex_labels = latex_labels
+        self.latex_labels = backend == "matplotlib"
+        self.latex_labels = latex_labels and backend == "matplotlib"
 
         need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
         df = dataset.reactions_df(add_dataset_main=need_dataset_main)
@@ -123,9 +124,9 @@ class TwoDRxn:
                 return f"${latex_lbl}\\;[{unit}]$"
             return f"${latex_lbl}$"
 
-        # plain text label
-        name = meta.get("name", var)
-        unit_name = meta.get("unit_name", "")
+        # unicode/plain text label for Plotly
+        name = meta.get("unicode", meta.get("name", var))
+        unit_name = meta.get("unit_unicode", meta.get("unit_name", ""))
         if unit_name:
             return f"{name} [{unit_name}]"
         return name
@@ -214,7 +215,7 @@ class TwoDMol:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
-        self.latex_labels = latex_labels
+        self.latex_labels = latex_labels and backend == "matplotlib"
 
         df = dataset.molecules_df()
         TwoDRxn._decode_strings(df)
@@ -323,9 +324,9 @@ class ThreeDRxn:
 
         self.title = title or TwoDRxn._make_title(x, y)
         labels = {
-            x: TwoDRxn._make_label(x, latex=False),
-            y: TwoDRxn._make_label(y, latex=False),
-            z: TwoDRxn._make_label(z, latex=False),
+            x: TwoDRxn._make_label(x, latex=self.latex_labels),
+            y: TwoDRxn._make_label(y, latex=self.latex_labels),
+            z: TwoDRxn._make_label(z, latex=self.latex_labels),
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
@@ -388,7 +389,7 @@ class ThreeDRxn:
                 axes.append(ax)
             if color_col:
                 cbar = fig.colorbar(sc, ax=axes)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
         else:
             fig = plt.figure(figsize=(8, 6))
             ax = fig.add_subplot(111, projection="3d")
@@ -405,7 +406,7 @@ class ThreeDRxn:
             ax.set_zlabel(labels[z])
             if color_col:
                 cbar = fig.colorbar(sc, ax=ax)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
         fig.suptitle(self.title)
         return fig
 
@@ -436,6 +437,7 @@ class ThreeDMol:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
+        self.latex_labels = backend == "matplotlib"
 
         df = dataset.molecules_df()
         TwoDRxn._decode_strings(df)
@@ -447,9 +449,9 @@ class ThreeDMol:
 
         self.title = title or TwoDRxn._make_title(x, y)
         labels = {
-            x: TwoDRxn._make_label(x, latex=False),
-            y: TwoDRxn._make_label(y, latex=False),
-            z: TwoDRxn._make_label(z, latex=False),
+            x: TwoDRxn._make_label(x, latex=self.latex_labels),
+            y: TwoDRxn._make_label(y, latex=self.latex_labels),
+            z: TwoDRxn._make_label(z, latex=self.latex_labels),
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
@@ -511,7 +513,7 @@ class ThreeDMol:
                 axes.append(ax)
             if color_col:
                 cbar = fig.colorbar(sc, ax=axes)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
         else:
             fig = plt.figure(figsize=(8, 6))
             ax = fig.add_subplot(111, projection="3d")
@@ -528,7 +530,7 @@ class ThreeDMol:
             ax.set_zlabel(labels[z])
             if color_col:
                 cbar = fig.colorbar(sc, ax=ax)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
         fig.suptitle(self.title)
         return fig
 
@@ -561,7 +563,7 @@ class Histogram:
         self.column = column
         self.table = table
         self.backend = backend
-        self.latex_labels = latex_labels
+        self.latex_labels = latex_labels and backend == "matplotlib"
         self.color_by = color_by
 
         if table not in {"reactions", "molecules"}:
@@ -577,7 +579,7 @@ class Histogram:
         TwoDRxn._decode_strings(df)
         self._df = df
 
-        labels = {column: TwoDRxn._make_label(column, latex=latex_labels)}
+        labels = {column: TwoDRxn._make_label(column, latex=self.latex_labels)}
         self.title = labels[column]
 
         if backend == "plotly":
@@ -607,7 +609,7 @@ class Histogram:
                         alpha=0.7,
                         label=str(group),
                     )
-                ax.legend(title=TwoDRxn._make_label(color_by, latex=False))
+                ax.legend(title=TwoDRxn._make_label(color_by, latex=self.latex_labels))
             else:
                 ax.hist(df[column].dropna(), bins=bins, range=range_, color="tab:blue")
             ax.set_xlabel(labels[column])
