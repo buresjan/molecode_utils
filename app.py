@@ -3,6 +3,7 @@ from dash import dcc, html
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import pandas as pd
+import plotly.graph_objects as go
 
 from molecode_utils.dataset import Dataset
 from molecode_utils.filter import Filter
@@ -26,6 +27,7 @@ finite_cols = [
 ]
 
 safe_col_ids = {col: col.replace(".", "_") for col in num_cols}
+finite_ids = [safe_col_ids[c] for c in finite_cols]
 
 all_tags = sorted(
     {
@@ -68,7 +70,11 @@ external_stylesheets = [
     dbc.themes.BOOTSTRAP,
     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
 ]
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(
+    __name__,
+    external_stylesheets=external_stylesheets,
+    suppress_callback_exceptions=True,
+)
 app.title = "Molecode Dashboard"
 
 
@@ -76,6 +82,7 @@ def _filter_tile():
     inputs = []
     for col in finite_cols:
         cid = safe_col_ids[col]
+        tip_id = f"tip-{cid}"
         inputs.append(
             html.Div(
                 [
@@ -84,7 +91,7 @@ def _filter_tile():
                             f"{col} ",
                             html.I(
                                 className="fa fa-circle-info text-secondary",
-                                id=f"tip-{col}",
+                                id=tip_id,
                                 style={
                                     "cursor": "pointer",
                                     "marginLeft": "4px",
@@ -96,7 +103,7 @@ def _filter_tile():
                     ),
                     dbc.Tooltip(
                         f"Allowed range: {num_ranges[col][0]} – {num_ranges[col][1]}",
-                        target=f"tip-{col}",
+                        target=tip_id,
                         placement="right",
                     ),
                     dbc.InputGroup(
@@ -115,7 +122,7 @@ def _filter_tile():
                                 className="form-control",
                             ),
                         ],
-                        className="mb-2",
+                        className="mb-2 w-100",
                     ),
                 ],
                 className="filter-row",
@@ -154,13 +161,14 @@ def _filter_tile():
         ],
         style={
             "border": "1px solid #ccc",
+            "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
             "padding": "10px",
             "overflowY": "auto",
             "minHeight": "0",
             "maxHeight": "100%",
         },
     )
-    return dbc.Card(dbc.CardBody(content), className="h-100 shadow-sm")
+    return content
 
 
 def _graph_panel(idx: int) -> html.Div:
@@ -213,9 +221,14 @@ def _graphs_tile():
             [_graph_panel(1), _graph_panel(2)],
             style={"display": "flex", "gap": "10px", "height": "100%"},
         ),
-        style={"padding": "8px", "height": "100%"},
+        style={
+            "padding": "8px",
+            "height": "100%",
+            "border": "1px solid #ccc",
+            "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
+        },
     )
-    return dbc.Card(dbc.CardBody(content), className="h-100 shadow-sm")
+    return content
 
 
 def _info_tile():
@@ -233,9 +246,13 @@ def _info_tile():
                 ]
             )
         ],
-        style={"border": "1px solid #ccc", "padding": "10px"},
+        style={
+            "border": "1px solid #ccc",
+            "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
+            "padding": "10px",
+        },
     )
-    return dbc.Card(dbc.CardBody(content), className="h-100 shadow-sm")
+    return content
 
 
 def _analysis_tile():
@@ -246,12 +263,13 @@ def _analysis_tile():
         ),
         style={
             "border": "1px solid #ccc",
+            "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
             "display": "flex",
             "alignItems": "center",
             "justifyContent": "center",
         },
     )
-    return dbc.Card(dbc.CardBody(content), className="h-100 shadow-sm")
+    return content
 
 
 app.layout = html.Div(
@@ -288,8 +306,7 @@ app.layout = html.Div(
 # Callbacks
 # -----------------------------------------------------------------------------
 filter_states = []
-for col in finite_cols:
-    cid = safe_col_ids[col]
+for cid in finite_ids:
     filter_states.extend(
         [
             State(f"min-{cid}", "value"),
@@ -361,6 +378,9 @@ def _build_figure(idx_list, x, y, model_name, color_var):
         elif color_var != "Model Residual":
             color_by = color_var
 
+    if ds.reactions_df().empty:
+        return go.Figure()
+
     fig = TwoDRxn(ds, x=x, y=y, model=model, color_by=color_by).figure
     fig.update_layout(
         autosize=True,
@@ -400,8 +420,8 @@ def refresh_graph2(idx_list, x, y, model_name, color_var):
 
 @app.callback(
     Output("dataset-dropdown", "value"),
-    *[Output(f"min-{cid}", "value") for cid in safe_col_ids.values()],
-    *[Output(f"max-{cid}", "value") for cid in safe_col_ids.values()],
+    *[Output(f"min-{cid}", "value") for cid in finite_ids],
+    *[Output(f"max-{cid}", "value") for cid in finite_ids],
     Input("clear-filter-btn", "n_clicks"),
     prevent_initial_call=True,
 )
