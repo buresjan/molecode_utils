@@ -2,6 +2,7 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+import pandas as pd
 
 from molecode_utils.dataset import Dataset
 from molecode_utils.filter import Filter
@@ -16,6 +17,13 @@ full_ds = Dataset.from_hdf(DATA_PATH)
 
 reaction_df = full_ds.reactions_df()
 num_cols = reaction_df.select_dtypes(include="number").columns
+
+# Columns whose numeric ranges are finite (no NaN at either end)
+finite_cols = [
+    col
+    for col in num_cols
+    if pd.notna(reaction_df[col].min()) and pd.notna(reaction_df[col].max())
+]
 
 safe_col_ids = {col: col.replace(".", "_") for col in num_cols}
 
@@ -66,7 +74,7 @@ app.title = "Molecode Dashboard"
 
 def _filter_tile():
     inputs = []
-    for col in num_cols:
+    for col in finite_cols:
         cid = safe_col_ids[col]
         inputs.append(
             html.Div(
@@ -94,7 +102,7 @@ def _filter_tile():
                             value=list(num_ranges[col]),
                             allowCross=False,
                         ),
-                        style={"marginTop": "4px"}  # ✅ Move style to wrapper Div
+                        style={"marginTop": "4px"},  # ✅ Move style to wrapper Div
                     ),
                 ]
             )
@@ -102,11 +110,21 @@ def _filter_tile():
 
     return html.Div(
         [
-            html.H5("Dataset Filtering"),
-            html.Button(
-                "Apply Filter",
-                id="apply-filter-btn",
-                className="btn btn-primary btn-sm mb-2",
+            html.Div(
+                [
+                    html.H5("Dataset Filtering", className="m-0"),
+                    html.Button(
+                        "Apply Filter",
+                        id="apply-filter-btn",
+                        className="btn btn-primary btn-sm",
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "justifyContent": "space-between",
+                    "alignItems": "baseline",
+                    "marginBottom": "6px",
+                },
             ),
             html.Label("Datasets"),
             dropdown("dataset-dropdown", all_tags, multi=True),
@@ -149,13 +167,18 @@ def _graph_panel(idx: int) -> html.Div:
                     "columnGap": "5px",
                 },
             ),
-            dcc.Graph(id=f"graph{idx}", style={"flex": 1, "width": "100%"}),
+            dcc.Graph(
+                id=f"graph{idx}",
+                style={"flex": 1, "width": "100%", "height": "100%"},
+                config={"responsive": True},
+            ),
         ],
         style={
             "display": "flex",
             "flexDirection": "column",
-            "flex": 1,
-            "minHeight": "0",
+            "flex": "1 1 50%",
+            "minWidth": 0,
+            "minHeight": 0,
         },
     )
 
@@ -238,7 +261,7 @@ app.layout = html.Div(
 # -----------------------------------------------------------------------------
 # Callbacks
 # -----------------------------------------------------------------------------
-filter_states = [State(f"slider-{safe_col_ids[c]}", "value") for c in num_cols]
+filter_states = [State(f"slider-{safe_col_ids[c]}", "value") for c in finite_cols]
 
 
 @app.callback(
@@ -246,22 +269,24 @@ filter_states = [State(f"slider-{safe_col_ids[c]}", "value") for c in num_cols]
     Input("apply-filter-btn", "n_clicks"),
     State("dataset-dropdown", "value"),
     *filter_states,
-    prevent_initial_call=True,
 )
 def update_filters(n_clicks, datasets, *ranges):
-    flt = Filter()
-    if datasets:
-        flt.datasets = datasets
-    for col, rng in zip(num_cols, ranges):
-        if rng is None:
-            continue
-        min_v, max_v = rng
-        if min_v is not None:
-            flt.reaction[f"{col}__ge"] = min_v
-        if max_v is not None:
-            flt.reaction[f"{col}__le"] = max_v
+    if n_clicks is None:
+        filtered = full_ds
+    else:
+        flt = Filter()
+        if datasets:
+            flt.datasets = datasets
+        for col, rng in zip(finite_cols, ranges):
+            if rng is None:
+                continue
+            min_v, max_v = rng
+            if min_v is not None:
+                flt.reaction[f"{col}__ge"] = min_v
+            if max_v is not None:
+                flt.reaction[f"{col}__le"] = max_v
 
-    filtered = flt.apply(full_ds)
+        filtered = flt.apply(full_ds)
 
     tags = set()
     for entry in filtered.reactions_df()["datasets_str"]:
@@ -289,8 +314,11 @@ def _build_figure(idx_list, x, y, model_name, color_var):
             color_by = color_var
 
     fig = TwoDRxn(ds, x=x, y=y, model=model, color_by=color_by).figure
-    fig.update_layout(margin=dict(l=0, r=0, t=40, b=40), autosize=True)
-    fig.update_layout(coloraxis_colorbar_x=1.02)
+    fig.update_layout(
+        autosize=True,
+        margin=dict(l=0, r=0, t=40, b=40),
+        coloraxis_colorbar_x=1.02,
+    )
     return fig
 
 
