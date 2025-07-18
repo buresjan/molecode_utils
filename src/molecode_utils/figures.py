@@ -39,7 +39,8 @@ class TwoDRxn:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
-        self.latex_labels = latex_labels
+        self.latex_labels = backend == "matplotlib"
+        self.latex_labels = latex_labels and backend == "matplotlib"
 
         need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
         df = dataset.reactions_df(add_dataset_main=need_dataset_main)
@@ -69,8 +70,16 @@ class TwoDRxn:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
+            cols = []
+            for c in (x, y, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
+            for col in hover_cols:
+                if col not in plot_df:
+                    plot_df[col] = df[col]
             self.figure = px.scatter(
-                df,
+                plot_df,
                 x=x,
                 y=y,
                 color=color_col,
@@ -78,7 +87,6 @@ class TwoDRxn:
                 title=self.title,
                 hover_data=hover_cols,
                 template="plotly_white",
-                height=700,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -91,6 +99,7 @@ class TwoDRxn:
                 yaxis_title=self._make_label(y, latex=self.latex_labels),
             )
             self.figure.update_traces(marker=dict(size=6))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib(df, x, y, color_col, labels)
         else:
@@ -123,9 +132,9 @@ class TwoDRxn:
                 return f"${latex_lbl}\\;[{unit}]$"
             return f"${latex_lbl}$"
 
-        # plain text label
-        name = meta.get("name", var)
-        unit_name = meta.get("unit_name", "")
+        # unicode/plain text label for Plotly
+        name = meta.get("unicode", meta.get("name", var))
+        unit_name = meta.get("unit_unicode", meta.get("unit_name", ""))
         if unit_name:
             return f"{name} [{unit_name}]"
         return name
@@ -214,7 +223,7 @@ class TwoDMol:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
-        self.latex_labels = latex_labels
+        self.latex_labels = latex_labels and backend == "matplotlib"
 
         df = dataset.molecules_df()
         TwoDRxn._decode_strings(df)
@@ -231,15 +240,19 @@ class TwoDMol:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
+            cols = []
+            for c in (x, y, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
             self.figure = px.scatter(
-                df,
+                plot_df,
                 x=x,
                 y=y,
                 color=color_col,
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=700,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -252,6 +265,7 @@ class TwoDMol:
                 yaxis_title=TwoDRxn._make_label(y, latex=self.latex_labels),
             )
             self.figure.update_traces(marker=dict(size=6))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = TwoDRxn._scatter_matplotlib(self, df, x, y, color_col, labels)
         else:
@@ -290,6 +304,7 @@ class ThreeDRxn:
         title: Optional[str] = None,
         fast_predict: bool = True,
         backend: str = "plotly",
+        latex_labels: bool = True,
     ) -> None:
         self.dataset = dataset
         self.x = x
@@ -299,6 +314,7 @@ class ThreeDRxn:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
+        self.latex_labels = latex_labels and backend == "matplotlib"
 
         need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
         df = dataset.reactions_df(add_dataset_main=need_dataset_main)
@@ -323,14 +339,22 @@ class ThreeDRxn:
 
         self.title = title or TwoDRxn._make_title(x, y)
         labels = {
-            x: TwoDRxn._make_label(x, latex=False),
-            y: TwoDRxn._make_label(y, latex=False),
-            z: TwoDRxn._make_label(z, latex=False),
+            x: TwoDRxn._make_label(x, latex=self.latex_labels),
+            y: TwoDRxn._make_label(y, latex=self.latex_labels),
+            z: TwoDRxn._make_label(z, latex=self.latex_labels),
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
+            cols = []
+            for c in (x, y, z, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
+            for col in hover_cols:
+                if col not in plot_df:
+                    plot_df[col] = df[col]
             self.figure = px.scatter_3d(
-                df,
+                plot_df,
                 x=x,
                 y=y,
                 z=z,
@@ -339,7 +363,6 @@ class ThreeDRxn:
                 title=self.title,
                 hover_data=hover_cols,
                 template="plotly_white",
-                height=900,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -351,6 +374,7 @@ class ThreeDRxn:
                 ),
             )
             self.figure.update_traces(marker=dict(size=4))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
         else:
@@ -388,7 +412,7 @@ class ThreeDRxn:
                 axes.append(ax)
             if color_col:
                 cbar = fig.colorbar(sc, ax=axes)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
         else:
             fig = plt.figure(figsize=(8, 6))
             ax = fig.add_subplot(111, projection="3d")
@@ -405,7 +429,7 @@ class ThreeDRxn:
             ax.set_zlabel(labels[z])
             if color_col:
                 cbar = fig.colorbar(sc, ax=ax)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
         fig.suptitle(self.title)
         return fig
 
@@ -436,6 +460,7 @@ class ThreeDMol:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
+        self.latex_labels = backend == "matplotlib"
 
         df = dataset.molecules_df()
         TwoDRxn._decode_strings(df)
@@ -447,14 +472,19 @@ class ThreeDMol:
 
         self.title = title or TwoDRxn._make_title(x, y)
         labels = {
-            x: TwoDRxn._make_label(x, latex=False),
-            y: TwoDRxn._make_label(y, latex=False),
-            z: TwoDRxn._make_label(z, latex=False),
+            x: TwoDRxn._make_label(x, latex=self.latex_labels),
+            y: TwoDRxn._make_label(y, latex=self.latex_labels),
+            z: TwoDRxn._make_label(z, latex=self.latex_labels),
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
+            cols = []
+            for c in (x, y, z, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
             self.figure = px.scatter_3d(
-                df,
+                plot_df,
                 x=x,
                 y=y,
                 z=z,
@@ -462,7 +492,6 @@ class ThreeDMol:
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=900,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -474,6 +503,7 @@ class ThreeDMol:
                 ),
             )
             self.figure.update_traces(marker=dict(size=4))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
         else:
@@ -511,7 +541,7 @@ class ThreeDMol:
                 axes.append(ax)
             if color_col:
                 cbar = fig.colorbar(sc, ax=axes)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
         else:
             fig = plt.figure(figsize=(8, 6))
             ax = fig.add_subplot(111, projection="3d")
@@ -528,7 +558,7 @@ class ThreeDMol:
             ax.set_zlabel(labels[z])
             if color_col:
                 cbar = fig.colorbar(sc, ax=ax)
-                cbar.set_label(TwoDRxn._make_label(color_col, latex=False))
+                cbar.set_label(TwoDRxn._make_label(color_col, latex=self.latex_labels))
         fig.suptitle(self.title)
         return fig
 
@@ -561,7 +591,7 @@ class Histogram:
         self.column = column
         self.table = table
         self.backend = backend
-        self.latex_labels = latex_labels
+        self.latex_labels = latex_labels and backend == "matplotlib"
         self.color_by = color_by
 
         if table not in {"reactions", "molecules"}:
@@ -577,7 +607,7 @@ class Histogram:
         TwoDRxn._decode_strings(df)
         self._df = df
 
-        labels = {column: TwoDRxn._make_label(column, latex=latex_labels)}
+        labels = {column: TwoDRxn._make_label(column, latex=self.latex_labels)}
         self.title = labels[column]
 
         if backend == "plotly":
@@ -590,12 +620,12 @@ class Histogram:
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=600,
             )
             self.figure.update_layout(
                 xaxis_title=labels[column],
                 yaxis_title="count",
             )
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif backend == "matplotlib":
             fig, ax = plt.subplots(figsize=(7, 5))
             if color_by:
@@ -607,7 +637,7 @@ class Histogram:
                         alpha=0.7,
                         label=str(group),
                     )
-                ax.legend(title=TwoDRxn._make_label(color_by, latex=False))
+                ax.legend(title=TwoDRxn._make_label(color_by, latex=self.latex_labels))
             else:
                 ax.hist(df[column].dropna(), bins=bins, range=range_, color="tab:blue")
             ax.set_xlabel(labels[column])

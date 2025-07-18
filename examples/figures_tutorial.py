@@ -15,8 +15,8 @@ ds = Dataset.from_hdf(H5_PATH)
 
 pio.renderers.default = "browser"
 
-# Basic scatter with LaTeX labels
-fig = TwoDRxn(ds, x="deltaG0", y="computed_barrier", latex_labels=True)
+# Basic scatter (Plotly uses Unicode labels by default)
+fig = TwoDRxn(ds, x="deltaG0", y="computed_barrier")
 fig.figure.write_html(ASSETS / "basic_scatter.html")
 fig.show()
 
@@ -26,7 +26,6 @@ fig = TwoDRxn(
     x="deltaG0",
     y="computed_barrier",
     color_by="asynchronicity",
-    latex_labels=True,
 )
 fig.figure.write_html(ASSETS / "color_by_async.html")
 fig.show()
@@ -39,7 +38,6 @@ fig = TwoDRxn(
     y=f"{m.name}_pred",
     model=m,
     group_by="datasets_str",
-    latex_labels=False,
 )
 fig.figure.write_html(ASSETS / "with_model.html")
 fig.show()

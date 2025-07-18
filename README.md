@@ -31,3 +31,32 @@ available cheat sheets.
 After installing the package you can explore the tutorials located in the `examples/` folder.
 The tutorials are heavily commented and meant to be run step‑by‑step; they double as documentation for the API.
 
+
+## Running the dashboard
+
+A small Dash application is included for interactive exploration of the example
+MoleCode archive. Install the extra dependencies and start the server:
+
+```bash
+pip install dash dash-bootstrap-components pandas plotly h5py
+python app.py
+```
+
+The app loads `data/molecode-data-v0.1.0.h5` by default and will be available at
+`http://127.0.0.1:8050/`.
+
+The window is divided into two columns. The left side hosts the filters and
+info tabs, while the right side presents a 2×2 grid of independent figure
+panels. Each panel can display a reaction or molecule plot—or a histogram—and
+has a small \u2699 button next to the figure selector to toggle the controls
+relevant to the chosen figure type.
+
+After adjusting the dataset filters hit **Apply** and all visible figures will
+refresh automatically.
+
+A small **Select All** button next to the *Datasets* dropdown fills in every
+available tag so you can deselect any you don't want.
+
+The left column uses a **3:2** vertical split and occupies roughly 40% of the
+width, leaving 60% for the figure board. Every quadrant resizes automatically so
+no scroll bars appear even when the window is narrowed.
