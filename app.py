@@ -190,7 +190,10 @@ def _figure_panel(idx: int) -> html.Div:
         style={"flex": 1, "width": "100%", "height": "100%"},
         config={"responsive": True},
     )
-    controls = html.Div(id={"type": "controls", "pane": idx})
+    controls = html.Div(
+        id={"type": "controls", "pane": idx},
+        style={"maxHeight": "160px", "overflowY": "auto"},
+    )
     return html.Div(
         [figure_type_dd, controls, graph],
         style={
@@ -286,7 +289,10 @@ def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
     Input({"type": "figtype", "pane": MATCH}, "value"),
 )
 def render_controls(fig_type: str):
-    pane = dash.callback_context.triggered_id["pane"]
+    triggered = dash.callback_context.triggered_id
+    if triggered is None:
+        return dash.no_update
+    pane = triggered["pane"]
     return _make_controls(fig_type, pane=pane)
 
 
@@ -419,6 +425,8 @@ def _build_figure(
     """Construct the appropriate Plotly figure for the chosen type."""
 
     ds = Dataset(full_ds._arc, idx_list) if idx_list else full_ds
+    if len(ds) == 0:
+        return go.Figure()
     model = _model(model_name)
 
     color_by = None
@@ -452,8 +460,8 @@ def _build_figure(
     State("filtered-indexes", "data"),
 )
 def build_figure(fig_type, values, idx_list):
-    roles = [item["role"] for item in dash.callback_context.inputs_list[1]]
-    args = dict(zip(roles, values))
+    items = dash.callback_context.inputs_list[1]
+    args = {c["id"]["role"]: v for c, v in zip(items, values)}
     return _build_figure(
         fig_type,
         idx_list,
