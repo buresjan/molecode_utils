@@ -70,7 +70,11 @@ class TwoDRxn:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
-            plot_df = df[[c for c in [x, y, color_col] if c]]
+            cols = []
+            for c in (x, y, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
             for col in hover_cols:
                 if col not in plot_df:
                     plot_df[col] = df[col]
@@ -236,7 +240,11 @@ class TwoDMol:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
-            plot_df = df[[c for c in [x, y, color_col] if c]]
+            cols = []
+            for c in (x, y, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
             self.figure = px.scatter(
                 plot_df,
                 x=x,
@@ -337,7 +345,11 @@ class ThreeDRxn:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
-            plot_df = df[[c for c in [x, y, z, color_col] if c]]
+            cols = []
+            for c in (x, y, z, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
             for col in hover_cols:
                 if col not in plot_df:
                     plot_df[col] = df[col]
@@ -466,7 +478,11 @@ class ThreeDMol:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
-            plot_df = df[[c for c in [x, y, z, color_col] if c]]
+            cols = []
+            for c in (x, y, z, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
             self.figure = px.scatter_3d(
                 plot_df,
                 x=x,

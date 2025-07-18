@@ -185,13 +185,17 @@ def _figure_panel(idx: int) -> html.Div:
         ["TwoDRxn", "TwoDMol", "ThreeDRxn", "ThreeDMol", "Histogram"],
         value="TwoDRxn",
     )
+    opts_btn = dbc.Button(
+        "\u2699", id={"type": "opts-btn", "pane": idx}, size="sm", className="mb-1"
+    )
+    header = html.Div(
+        [figure_type_dd, opts_btn],
+        style={"display": "flex", "alignItems": "center", "gap": "4px"},
+    )
     graph = dcc.Graph(
         id={"type": "fig", "pane": idx},
         style={"flex": 1, "width": "100%", "height": "100%"},
         config={"responsive": True},
-    )
-    opts_btn = dbc.Button(
-        "\u2699", id={"type": "opts-btn", "pane": idx}, size="sm", className="mb-1"
     )
     controls = dbc.Collapse(
         html.Div(
@@ -202,7 +206,7 @@ def _figure_panel(idx: int) -> html.Div:
         is_open=False,
     )
     return html.Div(
-        [figure_type_dd, opts_btn, controls, graph],
+        [header, controls, graph],
         style={
             "display": "flex",
             "flexDirection": "column",
@@ -248,13 +252,17 @@ def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
     DD = lambda role, opts, val: dropdown(B(role), opts, value=val)
 
     if fig_type in {"TwoDRxn", "TwoDMol"}:
+        color_opts = ["None"]
+        if "Rxn" in fig_type:
+            color_opts.append("Model Residual")
+        color_opts += list(num_cols)
         items = [
             html.Label("X"),
             DD("x", num_cols, "deltaG0"),
             html.Label("Y"),
             DD("y", num_cols, "computed_barrier"),
             html.Label("Color"),
-            DD("color", ["None"] + list(num_cols), "None"),
+            DD("color", color_opts, "None"),
         ]
         if "Rxn" in fig_type:
             items += [
@@ -264,6 +272,10 @@ def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
         return items
 
     if fig_type in {"ThreeDRxn", "ThreeDMol"}:
+        color_opts = ["None"]
+        if "Rxn" in fig_type:
+            color_opts.append("Model Residual")
+        color_opts += list(num_cols)
         items = [
             html.Label("X"),
             DD("x", num_cols, "deltaG0"),
@@ -272,7 +284,7 @@ def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
             html.Label("Z"),
             DD("z", num_cols, "computed_barrier"),
             html.Label("Color"),
-            DD("color", ["None"] + list(num_cols), "None"),
+            DD("color", color_opts, "None"),
         ]
         if "Rxn" in fig_type:
             items += [
@@ -481,7 +493,7 @@ def _build_figure(
     Output({"type": "fig", "pane": MATCH}, "figure"),
     Input({"type": "figtype", "pane": MATCH}, "value"),
     Input({"type": "ctrl", "pane": MATCH, "role": ALL}, "value"),
-    State("filtered-indexes", "data"),
+    Input("filtered-indexes", "data"),
 )
 def build_figure(fig_type, values, idx_list):
     items = dash.callback_context.inputs_list[1]
