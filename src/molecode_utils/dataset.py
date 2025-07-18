@@ -316,6 +316,36 @@ class Dataset:
         df = self.reactions_df().select_dtypes(include=[np.number])
         return df.describe()
 
+    def coverage(self) -> dict[str, pd.Series]:
+        """Return percentage of valid values for all columns.
+
+        The resulting dictionary contains one entry for reaction columns and
+        one for molecule columns. Each entry is a ``pandas.Series`` with the
+        column names as index and percentages in the ``0–100`` range as values.
+
+        Returns
+        -------
+        dict[str, pandas.Series]
+            Mapping ``"reactions"`` and ``"molecules"`` to coverage statistics.
+        """
+
+        mol_df = self.molecules_df()
+        mol_pct = mol_df.notnull().mean() * 100
+        col = "self_exchange_barrier [kcal/mol]"
+        if col in mol_df.columns:
+            mol_pct["positive_self_exchange_barrier"] = (mol_df[col] > 0).mean() * 100
+
+        rxn_df = self.reactions_df()
+        rxn_pct = rxn_df.notnull().mean() * 100
+        col = "computed_barrier [kcal/mol]"
+        if col in rxn_df.columns:
+            rxn_pct["positive_computed_barriers"] = (rxn_df[col] > 0).mean() * 100
+            rxn_pct["relevant_computed_barriers"] = (
+                (rxn_df[col] > 0) & (rxn_df[col] < 30)
+            ).mean() * 100
+
+        return {"molecules": mol_pct, "reactions": rxn_pct}
+
     # ------------------------------------------------------------------
     # Powerful, chainable filtering
     # ------------------------------------------------------------------
