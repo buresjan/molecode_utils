@@ -42,6 +42,9 @@ pip install dash dash-bootstrap-components pandas plotly h5py
 python app.py
 ```
 
+The dashboard uses the **FLATLY** Bootstrap theme, Font Awesome icons and the
+Roboto web font for a consistent look.
+
 The app loads `data/molecode-data-v0.1.0.h5` by default and will be available at
 `http://127.0.0.1:8050/`.
 
