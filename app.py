@@ -477,25 +477,25 @@ def render_controls(fig_type: str):
 
 
 def _info_tile():
-    content = html.Div(
+    tabs = dcc.Tabs(
         [
-            dcc.Tabs(
-                [
-                    dcc.Tab(html.Div(id="dataset-info"), label="Dataset Info"),
-                    dcc.Tab(
-                        html.Div("Molecule lookup coming soon"), label="Molecule Lookup"
-                    ),
-                    dcc.Tab(
-                        html.Div("Reaction lookup coming soon"), label="Reaction Lookup"
-                    ),
-                    dcc.Tab(
-                        html.Div(_models_overview_table(), id="models-table"),
-                        label="Models",
-                    ),
-                    dcc.Tab(html.Div(id="model-stats"), label="Model Stats"),
-                ]
-            )
+            dcc.Tab(html.Div(id="dataset-info"), label="Dataset Info"),
+            dcc.Tab(html.Div("Molecule lookup coming soon"), label="Molecule Lookup"),
+            dcc.Tab(html.Div("Reaction lookup coming soon"), label="Reaction Lookup"),
+            dcc.Tab(
+                html.Div(_models_overview_table(), id="models-table"), label="Models"
+            ),
+            dcc.Tab(html.Div(id="model-stats"), label="Model Stats"),
         ],
+        style={
+            "position": "sticky",
+            "top": 0,
+            "zIndex": 1,
+            "background": "white",
+        },
+    )
+    content = html.Div(
+        [tabs],
         style={
             "border": "1px solid #ccc",
             "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
@@ -607,7 +607,22 @@ def update_filters(n_clicks, datasets, *values):
             " oxidants).",
         ]
     )
-    info = html.Div([summary, _coverage_tables(filtered)])
+    info = html.Div(
+        [
+            html.Div(
+                summary,
+                id="dataset-summary",
+                style={
+                    "position": "sticky",
+                    "top": 0,
+                    "background": "white",
+                    "zIndex": 1,
+                    "paddingBottom": "4px",
+                },
+            ),
+            _coverage_tables(filtered),
+        ]
+    )
     stats = _model_stats_table(filtered)
     return filtered._rxn_ids, info, stats
 
