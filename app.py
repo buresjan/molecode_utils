@@ -224,7 +224,9 @@ def _model(name: str | None):
     return MODEL_OPTIONS.get(name)
 
 
-def _make_controls(fig_type: str, *, pane: int) -> list[html.Component]:
+from typing import Any
+
+def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
     """Return the controls appropriate for a figure type."""
 
     base_id = lambda name: f"{name}-{pane}"
