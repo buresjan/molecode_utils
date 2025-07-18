@@ -190,12 +190,19 @@ def _figure_panel(idx: int) -> html.Div:
         style={"flex": 1, "width": "100%", "height": "100%"},
         config={"responsive": True},
     )
-    controls = html.Div(
-        id={"type": "controls", "pane": idx},
-        style={"maxHeight": "160px", "overflowY": "auto"},
+    opts_btn = dbc.Button(
+        "\u2699", id={"type": "opts-btn", "pane": idx}, size="sm", className="mb-1"
+    )
+    controls = dbc.Collapse(
+        html.Div(
+            id={"type": "controls", "pane": idx},
+            style={"maxHeight": "160px", "overflowY": "auto"},
+        ),
+        id={"type": "collapse", "pane": idx},
+        is_open=False,
     )
     return html.Div(
-        [figure_type_dd, controls, graph],
+        [figure_type_dd, opts_btn, controls, graph],
         style={
             "display": "flex",
             "flexDirection": "column",
@@ -427,6 +434,20 @@ def _build_figure(
     ds = Dataset(full_ds._arc, idx_list) if idx_list else full_ds
     if len(ds) == 0:
         return go.Figure()
+
+    # guard against missing axes or NaN-only data
+    if fig_type in {"TwoDRxn", "TwoDMol"} and (x is None or y is None):
+        return go.Figure()
+    if fig_type in {"ThreeDRxn", "ThreeDMol"} and (x is None or y is None or z is None):
+        return go.Figure()
+
+    if fig_type in {"TwoDRxn", "ThreeDRxn", "Histogram"}:
+        df = ds.reactions_df()
+    else:
+        df = ds.molecules_df()
+    cols = [c for c in [x, y, z, column] if c]
+    if cols and df[cols].dropna().empty:
+        return go.Figure()
     model = _model(model_name)
 
     color_by = None
@@ -461,7 +482,9 @@ def _build_figure(
 )
 def build_figure(fig_type, values, idx_list):
     items = dash.callback_context.inputs_list[1]
-    args = {c["id"]["role"]: v for c, v in zip(items, values)}
+    args = {c["id"].get("role"): v for c, v in zip(items, values) if "role" in c["id"]}
+    if not args:
+        return go.Figure()
     return _build_figure(
         fig_type,
         idx_list,
@@ -473,6 +496,16 @@ def build_figure(fig_type, values, idx_list):
         model_name=args.get("model"),
         color=args.get("color"),
     )
+
+
+@app.callback(
+    Output({"type": "collapse", "pane": MATCH}, "is_open"),
+    Input({"type": "opts-btn", "pane": MATCH}, "n_clicks"),
+    State({"type": "collapse", "pane": MATCH}, "is_open"),
+    prevent_initial_call=True,
+)
+def toggle_opts(n, is_open):
+    return not is_open
 
 
 @app.callback(
