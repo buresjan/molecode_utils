@@ -1,0 +1,21 @@
+body {
+    font-family: 'Roboto', sans-serif;
+}
+
+.btn:hover {
+    filter: brightness(95%);
+    transition: filter 0.2s ease-in-out;
+}
+
+.figure-panel {
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.figure-panel:hover {
+    box-shadow: 0 0 0 3px rgba(2, 117, 216, 0.25);
+}
+
+#dataset-summary h5 {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}

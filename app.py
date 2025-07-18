@@ -186,8 +186,9 @@ def dropdown(id_, options, value=None, multi=False, *, style=None):
 # Layout
 # -----------------------------------------------------------------------------
 external_stylesheets = [
-    dbc.themes.BOOTSTRAP,
+    dbc.themes.FLATLY,
     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css",
+    "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap",
 ]
 app = dash.Dash(
     __name__,
@@ -350,6 +351,7 @@ def _figure_panel(idx: int) -> html.Div:
     )
     return html.Div(
         [header, controls, graph],
+        className="figure-panel",
         style={
             "display": "flex",
             "flexDirection": "column",
@@ -596,26 +598,41 @@ def update_filters(n_clicks, datasets, *values):
     n_subst = rxn_df["subst_idx"].nunique()
     n_oxid = rxn_df["oxid_idx"].nunique()
 
-    summary = html.Span(
+    summary = html.Div(
         [
-            "Filtered dataset contains ",
-            dbc.Badge(len(filtered), color="primary", className="me-1"),
-            "reactions from ",
-            dbc.Badge(
-                len(tag_list), color="secondary", className="me-1", id="dataset-count"
+            html.H5([html.I(className="fa fa-database me-1"), "Dataset Summary"]),
+            html.Span(
+                [
+                    "Filtered dataset contains ",
+                    html.I(className="fa fa-flask text-primary me-1"),
+                    dbc.Badge(len(filtered), color="primary", className="me-1"),
+                    "reactions from ",
+                    html.I(className="fa fa-tags text-secondary me-1"),
+                    dbc.Badge(
+                        len(tag_list),
+                        color="secondary",
+                        className="me-1",
+                        id="dataset-count",
+                    ),
+                    dbc.Tooltip(
+                        ", ".join(tag_list),
+                        target="dataset-count",
+                        placement="bottom",
+                    ),
+                    "datasets, involving ",
+                    html.I(className="fa fa-vial text-success me-1"),
+                    dbc.Badge(
+                        len(filtered.molecules_df()),
+                        color="success",
+                        className="me-1",
+                    ),
+                    "unique molecules (",
+                    html.B(n_subst),
+                    " substrates, ",
+                    html.B(n_oxid),
+                    " oxidants).",
+                ]
             ),
-            dbc.Tooltip(
-                ", ".join(tag_list),
-                target="dataset-count",
-                placement="bottom",
-            ),
-            "datasets, involving ",
-            dbc.Badge(len(filtered.molecules_df()), color="success", className="me-1"),
-            "unique molecules (",
-            html.B(n_subst),
-            " substrates, ",
-            html.B(n_oxid),
-            " oxidants).",
         ]
     )
     info = html.Div(
