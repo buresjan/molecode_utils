@@ -346,6 +346,25 @@ class Dataset:
 
         return {"molecules": mol_pct, "reactions": rxn_pct}
 
+    def coverage_counts(self) -> dict[str, pd.Series]:
+        """Return absolute counts of valid values for all columns."""
+
+        mol_df = self.molecules_df()
+        mol_cnt = mol_df.notnull().sum()
+        col = "self_exchange_barrier [kcal/mol]"
+        if col in mol_df.columns:
+            mol_cnt["positive_self_exchange_barrier"] = (mol_df[col] > 0).sum()
+
+        rxn_df = self.reactions_df()
+        rxn_cnt = rxn_df.notnull().sum()
+        col = "computed_barrier [kcal/mol]"
+        if col in rxn_df.columns:
+            mask = rxn_df[col] > 0
+            rxn_cnt["positive_computed_barriers"] = mask.sum()
+            rxn_cnt["relevant_computed_barriers"] = (mask & (rxn_df[col] < 30)).sum()
+
+        return {"molecules": mol_cnt, "reactions": rxn_cnt}
+
     # ------------------------------------------------------------------
     # Powerful, chainable filtering
     # ------------------------------------------------------------------
