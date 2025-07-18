@@ -1,6 +1,6 @@
 import dash
 from dash import dcc, html
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
@@ -181,12 +181,16 @@ def _figure_panel(idx: int) -> html.Div:
     """Return a single figure panel for the dashboard."""
 
     figure_type_dd = dropdown(
-        f"figtype-{idx}",
+        {"type": "figtype", "pane": idx},
         ["TwoDRxn", "TwoDMol", "ThreeDRxn", "ThreeDMol", "Histogram"],
         value="TwoDRxn",
     )
-    graph = dcc.Graph(id=f"fig-{idx}", style={"height": "100%", "width": "100%"})
-    controls = html.Div(id=f"controls-{idx}")
+    graph = dcc.Graph(
+        id={"type": "fig", "pane": idx},
+        style={"flex": 1, "width": "100%", "height": "100%"},
+        config={"responsive": True},
+    )
+    controls = html.Div(id={"type": "controls", "pane": idx})
     return html.Div(
         [figure_type_dd, controls, graph],
         style={
@@ -226,72 +230,64 @@ def _model(name: str | None):
 
 from typing import Any
 
+
 def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
     """Return the controls appropriate for a figure type."""
 
-    base_id = lambda name: f"{name}-{pane}"
+    B = lambda role: {"type": "ctrl", "pane": pane, "role": role}
+    DD = lambda role, opts, val: dropdown(B(role), opts, value=val)
+
     if fig_type in {"TwoDRxn", "TwoDMol"}:
-        return [
+        items = [
             html.Label("X"),
-            dropdown(base_id("x"), num_cols, value="deltaG0"),
+            DD("x", num_cols, "deltaG0"),
             html.Label("Y"),
-            dropdown(base_id("y"), num_cols, value="computed_barrier"),
+            DD("y", num_cols, "computed_barrier"),
             html.Label("Color"),
-            dropdown(base_id("color"), ["None"] + list(num_cols), value="None"),
-            html.Label("Model") if "Rxn" in fig_type else None,
-            (
-                dropdown(base_id("model"), ["None"] + list(MODEL_OPTIONS), value="None")
-                if "Rxn" in fig_type
-                else None
-            ),
+            DD("color", ["None"] + list(num_cols), "None"),
         ]
+        if "Rxn" in fig_type:
+            items += [
+                html.Label("Model"),
+                DD("model", ["None"] + list(MODEL_OPTIONS), "None"),
+            ]
+        return items
+
     if fig_type in {"ThreeDRxn", "ThreeDMol"}:
-        return [
+        items = [
             html.Label("X"),
-            dropdown(base_id("x"), num_cols, value="deltaG0"),
+            DD("x", num_cols, "deltaG0"),
             html.Label("Y"),
-            dropdown(base_id("y"), num_cols, value="asynchronicity"),
+            DD("y", num_cols, "asynchronicity"),
             html.Label("Z"),
-            dropdown(base_id("z"), num_cols, value="computed_barrier"),
+            DD("z", num_cols, "computed_barrier"),
             html.Label("Color"),
-            dropdown(base_id("color"), ["None"] + list(num_cols), value="None"),
-            html.Label("Model") if "Rxn" in fig_type else None,
-            (
-                dropdown(base_id("model"), ["None"] + list(MODEL_OPTIONS), value="None")
-                if "Rxn" in fig_type
-                else None
-            ),
+            DD("color", ["None"] + list(num_cols), "None"),
         ]
+        if "Rxn" in fig_type:
+            items += [
+                html.Label("Model"),
+                DD("model", ["None"] + list(MODEL_OPTIONS), "None"),
+            ]
+        return items
+
     return [
         html.Label("Variable"),
-        dropdown(base_id("col"), num_cols, value="deltaG0"),
+        DD("col", num_cols, "deltaG0"),
         html.Label("Bins"),
-        dcc.Input(id=base_id("bins"), type="number", value=50),
+        dcc.Input(id=B("bins"), type="number", value=50, className="form-control"),
         html.Label("Color"),
-        dropdown(
-            base_id("color"), ["None", "dataset_main"] + list(num_cols), value="None"
-        ),
+        DD("color", ["None", "dataset_main"] + list(num_cols), "None"),
     ]
 
 
-@app.callback(Output("controls-1", "children"), Input("figtype-1", "value"))
-def render_controls_1(fig_type: str):
-    return _make_controls(fig_type, pane=1)
-
-
-@app.callback(Output("controls-2", "children"), Input("figtype-2", "value"))
-def render_controls_2(fig_type: str):
-    return _make_controls(fig_type, pane=2)
-
-
-@app.callback(Output("controls-3", "children"), Input("figtype-3", "value"))
-def render_controls_3(fig_type: str):
-    return _make_controls(fig_type, pane=3)
-
-
-@app.callback(Output("controls-4", "children"), Input("figtype-4", "value"))
-def render_controls_4(fig_type: str):
-    return _make_controls(fig_type, pane=4)
+@app.callback(
+    Output({"type": "controls", "pane": MATCH}, "children"),
+    Input({"type": "figtype", "pane": MATCH}, "value"),
+)
+def render_controls(fig_type: str):
+    pane = dash.callback_context.triggered_id["pane"]
+    return _make_controls(fig_type, pane=pane)
 
 
 def _info_tile():
@@ -450,114 +446,24 @@ def _build_figure(
 
 
 @app.callback(
-    Output("fig-1", "figure"),
-    [
-        Input("filtered-indexes", "data"),
-        Input("figtype-1", "value"),
-        Input("x-1", "value"),
-        Input("y-1", "value"),
-        Input("z-1", "value"),
-        Input("col-1", "value"),
-        Input("bins-1", "value"),
-        Input("model-1", "value"),
-        Input("color-1", "value"),
-    ],
+    Output({"type": "fig", "pane": MATCH}, "figure"),
+    Input({"type": "figtype", "pane": MATCH}, "value"),
+    Input({"type": "ctrl", "pane": MATCH, "role": ALL}, "value"),
+    State("filtered-indexes", "data"),
 )
-def build_fig_1(idx_list, fig_type, x, y, z, col, bins, model, color):
+def build_figure(fig_type, values, idx_list):
+    roles = [item["role"] for item in dash.callback_context.inputs_list[1]]
+    args = dict(zip(roles, values))
     return _build_figure(
         fig_type,
         idx_list,
-        x=x,
-        y=y,
-        z=z,
-        column=col,
-        bins=bins,
-        model_name=model,
-        color=color,
-    )
-
-
-@app.callback(
-    Output("fig-2", "figure"),
-    [
-        Input("filtered-indexes", "data"),
-        Input("figtype-2", "value"),
-        Input("x-2", "value"),
-        Input("y-2", "value"),
-        Input("z-2", "value"),
-        Input("col-2", "value"),
-        Input("bins-2", "value"),
-        Input("model-2", "value"),
-        Input("color-2", "value"),
-    ],
-)
-def build_fig_2(idx_list, fig_type, x, y, z, col, bins, model, color):
-    return _build_figure(
-        fig_type,
-        idx_list,
-        x=x,
-        y=y,
-        z=z,
-        column=col,
-        bins=bins,
-        model_name=model,
-        color=color,
-    )
-
-
-@app.callback(
-    Output("fig-3", "figure"),
-    [
-        Input("filtered-indexes", "data"),
-        Input("figtype-3", "value"),
-        Input("x-3", "value"),
-        Input("y-3", "value"),
-        Input("z-3", "value"),
-        Input("col-3", "value"),
-        Input("bins-3", "value"),
-        Input("model-3", "value"),
-        Input("color-3", "value"),
-    ],
-)
-def build_fig_3(idx_list, fig_type, x, y, z, col, bins, model, color):
-    return _build_figure(
-        fig_type,
-        idx_list,
-        x=x,
-        y=y,
-        z=z,
-        column=col,
-        bins=bins,
-        model_name=model,
-        color=color,
-    )
-
-
-@app.callback(
-    Output("fig-4", "figure"),
-    [
-        Input("filtered-indexes", "data"),
-        Input("figtype-4", "value"),
-        Input("x-4", "value"),
-        Input("y-4", "value"),
-        Input("z-4", "value"),
-        Input("col-4", "value"),
-        Input("bins-4", "value"),
-        Input("model-4", "value"),
-        Input("color-4", "value"),
-    ],
-)
-def build_fig_4(idx_list, fig_type, x, y, z, col, bins, model, color):
-    return _build_figure(
-        fig_type,
-        idx_list,
-        x=x,
-        y=y,
-        z=z,
-        column=col,
-        bins=bins,
-        model_name=model,
-        color=color,
+        x=args.get("x"),
+        y=args.get("y"),
+        z=args.get("z"),
+        column=args.get("col"),
+        bins=args.get("bins"),
+        model_name=args.get("model"),
+        color=args.get("color"),
     )
 
 
