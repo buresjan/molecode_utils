@@ -170,7 +170,17 @@ def _filter_tile():
                     "paddingBottom": "4px",
                 },
             ),
-            html.Label("Datasets"),
+            html.Div(
+                [
+                    html.Label("Datasets", className="m-0"),
+                    html.Button(
+                        "Select All",
+                        id="select-datasets-btn",
+                        className="btn btn-outline-secondary btn-sm ms-2",
+                    ),
+                ],
+                style={"display": "flex", "alignItems": "center", "gap": "4px"},
+            ),
             dropdown("dataset-dropdown", all_tags, multi=True),
             html.Div(inputs, style={"display": "grid", "rowGap": "6px"}),
         ],
@@ -571,6 +581,15 @@ def toggle_residual_option(model_value, fig_type):
 )
 def toggle_opts(n, is_open):
     return not is_open
+
+
+@app.callback(
+    Output("dataset-dropdown", "value"),
+    Input("select-datasets-btn", "n_clicks"),
+    prevent_initial_call=True,
+)
+def select_all_datasets(n):
+    return all_tags
 
 
 @app.callback(
