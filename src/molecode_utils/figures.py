@@ -79,7 +79,6 @@ class TwoDRxn:
                 title=self.title,
                 hover_data=hover_cols,
                 template="plotly_white",
-                height=700,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -92,6 +91,7 @@ class TwoDRxn:
                 yaxis_title=self._make_label(y, latex=self.latex_labels),
             )
             self.figure.update_traces(marker=dict(size=6))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib(df, x, y, color_col, labels)
         else:
@@ -240,7 +240,6 @@ class TwoDMol:
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=700,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -253,6 +252,7 @@ class TwoDMol:
                 yaxis_title=TwoDRxn._make_label(y, latex=self.latex_labels),
             )
             self.figure.update_traces(marker=dict(size=6))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = TwoDRxn._scatter_matplotlib(self, df, x, y, color_col, labels)
         else:
@@ -340,7 +340,6 @@ class ThreeDRxn:
                 title=self.title,
                 hover_data=hover_cols,
                 template="plotly_white",
-                height=900,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -352,6 +351,7 @@ class ThreeDRxn:
                 ),
             )
             self.figure.update_traces(marker=dict(size=4))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
         else:
@@ -464,7 +464,6 @@ class ThreeDMol:
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=900,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -476,6 +475,7 @@ class ThreeDMol:
                 ),
             )
             self.figure.update_traces(marker=dict(size=4))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
         else:
@@ -592,12 +592,12 @@ class Histogram:
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=600,
             )
             self.figure.update_layout(
                 xaxis_title=labels[column],
                 yaxis_title="count",
             )
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif backend == "matplotlib":
             fig, ax = plt.subplots(figsize=(7, 5))
             if color_by:
