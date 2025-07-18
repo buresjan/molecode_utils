@@ -157,7 +157,7 @@ def _filter_tile():
                     html.Button(
                         "Clear",
                         id="clear-filter-btn",
-                        className="btn btn-outline-secondary btn-sm ms-2",
+                        className="btn btn-primary btn-sm ms-2",
                     ),
                 ],
                 style={
@@ -585,21 +585,26 @@ def toggle_opts(n, is_open):
 
 @app.callback(
     Output("dataset-dropdown", "value"),
-    Input("select-datasets-btn", "n_clicks"),
-    prevent_initial_call=True,
-)
-def select_all_datasets(n):
-    return all_tags
-
-
-@app.callback(
-    Output("dataset-dropdown", "value"),
     *[Output(f"min-{cid}", "value") for cid in finite_ids],
     *[Output(f"max-{cid}", "value") for cid in finite_ids],
+    Input("select-datasets-btn", "n_clicks"),
     Input("clear-filter-btn", "n_clicks"),
     prevent_initial_call=True,
 )
-def clear_all(n):
+def modify_dataset_values(select_n, clear_n):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if button_id == "select-datasets-btn":
+        return (
+            all_tags,
+            *[dash.no_update for _ in finite_ids],
+            *[dash.no_update for _ in finite_ids],
+        )
+
+    # clear-filter-btn triggered
     return (
         None,
         *[num_ranges[c][0] for c in finite_cols],
