@@ -4,6 +4,7 @@ from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
+import numpy as np
 
 from molecode_utils.dataset import Dataset
 from molecode_utils.filter import Filter
@@ -61,6 +62,68 @@ MODEL_OPTIONS = {
     "M3": ModelM3(),
     "M4": ModelM4(),
 }
+
+
+def _models_overview_table() -> html.Table:
+    """Return static table of available models and their equations."""
+    header = html.Thead(html.Tr([html.Th("Model"), html.Th("Equation")]))
+    rows = [
+        html.Tr([html.Td(m.name), html.Td(m.equation)]) for m in MODEL_OPTIONS.values()
+    ]
+    body = html.Tbody(rows)
+    return html.Table([header, body], className="table table-sm")
+
+
+def _model_stats_table(ds: Dataset) -> html.Table:
+    """Return table with simple stats for each model on ``ds``."""
+    rows = []
+    df_all = ds.reactions_df()
+    actual = df_all.get("computed_barrier")
+    n_total = len(df_all)
+    for m in MODEL_OPTIONS.values():
+        eval_df = m.evaluate(ds)
+        pred = eval_df[f"{m.name}_pred"]
+        valid = pred.notna() & actual.notna()
+        coverage = valid.sum() / n_total * 100 if n_total else 0.0
+        if valid.sum() > 1:
+            res = pred[valid] - actual[valid]
+            mae = float(res.abs().mean())
+            rmse = float((res**2).mean() ** 0.5)
+            slope, intercept = np.polyfit(pred[valid], actual[valid], 1)
+            mean_y = actual[valid].mean()
+            ss_res = ((actual[valid] - pred[valid]) ** 2).sum()
+            ss_tot = ((actual[valid] - mean_y) ** 2).sum()
+            r2 = float("nan") if ss_tot == 0 else float(1 - ss_res / ss_tot)
+            line = f"{slope:.2f}x + {intercept:.2f}"
+        else:
+            mae = rmse = r2 = float("nan")
+            line = "–"
+        rows.append(
+            html.Tr(
+                [
+                    html.Td(m.name),
+                    html.Td(f"{r2:.2f}"),
+                    html.Td(f"{mae:.2f}"),
+                    html.Td(f"{rmse:.2f}"),
+                    html.Td(line),
+                    html.Td(f"{coverage:.1f}%"),
+                ]
+            )
+        )
+    header = html.Thead(
+        html.Tr(
+            [
+                html.Th("Model"),
+                html.Th("R²"),
+                html.Th("MAE"),
+                html.Th("s"),
+                html.Th("y ="),
+                html.Th("Valid %"),
+            ]
+        )
+    )
+    body = html.Tbody(rows)
+    return html.Table([header, body], className="table table-sm")
 
 
 def dropdown(id_, options, value=None, multi=False, *, style=None):
@@ -165,7 +228,10 @@ def _filter_tile():
                                 className="btn btn-primary btn-sm ms-2",
                             ),
                         ],
-                        style={"display": "flex", "gap": "6px"},  # Optional: space between buttons
+                        style={
+                            "display": "flex",
+                            "gap": "6px",
+                        },  # Optional: space between buttons
                     ),
                 ],
                 style={
@@ -214,14 +280,17 @@ def _figure_panel(idx: int) -> html.Div:
         value="TwoDRxn",
         style={"width": "100%"},
     )
-    
+
     opts_btn = dbc.Button(
         "\u2699",
         id={"type": "opts-btn", "pane": idx},
         size="sm",
         className="mb-1",
-        color="light",           # Use Bootstrap's "light" button for white/gray
-        style={"backgroundColor": "white", "border": "1px solid #ccc"},  # optional refinement
+        color="light",  # Use Bootstrap's "light" button for white/gray
+        style={
+            "backgroundColor": "white",
+            "border": "1px solid #ccc",
+        },  # optional refinement
     )
 
     header = html.Div(
@@ -381,6 +450,11 @@ def _info_tile():
                     dcc.Tab(
                         html.Div("Reaction lookup coming soon"), label="Reaction Lookup"
                     ),
+                    dcc.Tab(
+                        html.Div(_models_overview_table(), id="models-table"),
+                        label="Models",
+                    ),
+                    dcc.Tab(html.Div(id="model-stats"), label="Model Stats"),
                 ]
             )
         ],
@@ -434,7 +508,11 @@ for cid in finite_ids:
 
 
 @app.callback(
-    [Output("filtered-indexes", "data"), Output("dataset-info", "children")],
+    [
+        Output("filtered-indexes", "data"),
+        Output("dataset-info", "children"),
+        Output("model-stats", "children"),
+    ],
     Input("apply-filter-btn", "n_clicks"),
     State("dataset-dropdown", "value"),
     *filter_states,
@@ -480,7 +558,8 @@ def update_filters(n_clicks, datasets, *values):
             "unique molecules.",
         ]
     )
-    return filtered._rxn_ids, info
+    stats = _model_stats_table(filtered)
+    return filtered._rxn_ids, info, stats
 
 
 def _build_figure(
