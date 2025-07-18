@@ -54,6 +54,9 @@ relevant to the chosen figure type.
 After adjusting the dataset filters hit **Apply** and all visible figures will
 refresh automatically.
 
+A small **Select All** button next to the *Datasets* dropdown fills in every
+available tag so you can deselect any you don't want.
+
 The left column uses a **3:2** vertical split and occupies roughly 40% of the
 width, leaving 60% for the figure board. Every quadrant resizes automatically so
 no scroll bars appear even when the window is narrowed.
