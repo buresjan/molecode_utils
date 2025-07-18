@@ -25,6 +25,10 @@ full_ds = Dataset.from_hdf(DATA_PATH)
 reaction_df = full_ds.reactions_df()
 num_cols = reaction_df.select_dtypes(include="number").columns
 
+# Numeric columns available in the molecules table
+mol_df = full_ds.molecules_df()
+mol_num_cols = mol_df.select_dtypes(include="number").columns
+
 # Columns whose numeric ranges are finite (no NaN at either end)
 finite_cols = [
     col
@@ -59,13 +63,18 @@ MODEL_OPTIONS = {
 }
 
 
-def dropdown(id_, options, value=None, multi=False):
+def dropdown(id_, options, value=None, multi=False, *, style=None):
+    """Return a reusable ``dcc.Dropdown`` element."""
+
+    fmt_opts = [o if isinstance(o, dict) else {"label": o, "value": o} for o in options]
+
     return dcc.Dropdown(
-        options=[{"label": o, "value": o} for o in options],
+        options=fmt_opts,
         value=value,
         id=id_,
         multi=multi,
         clearable=False,
+        style=style,
     )
 
 
@@ -184,6 +193,7 @@ def _figure_panel(idx: int) -> html.Div:
         {"type": "figtype", "pane": idx},
         ["TwoDRxn", "TwoDMol", "ThreeDRxn", "ThreeDMol", "Histogram"],
         value="TwoDRxn",
+        style={"width": "33%"},
     )
     opts_btn = dbc.Button(
         "\u2699", id={"type": "opts-btn", "pane": idx}, size="sm", className="mb-1"
@@ -251,32 +261,41 @@ def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
     B = lambda role: {"type": "ctrl", "pane": pane, "role": role}
     DD = lambda role, opts, val: dropdown(B(role), opts, value=val)
 
-    if fig_type in {"TwoDRxn", "TwoDMol"}:
-        color_opts = ["None"]
-        if "Rxn" in fig_type:
-            color_opts.append("Model Residual")
-        color_opts += list(num_cols)
-        items = [
+    if fig_type == "TwoDRxn":
+        color_opts = [
+            "None",
+            {"label": "Model Residual", "value": "Model Residual", "disabled": True},
+            *num_cols,
+        ]
+        return [
             html.Label("X"),
             DD("x", num_cols, "deltaG0"),
             html.Label("Y"),
             DD("y", num_cols, "computed_barrier"),
             html.Label("Color"),
             DD("color", color_opts, "None"),
+            html.Label("Model"),
+            DD("model", ["None"] + list(MODEL_OPTIONS), "None"),
         ]
-        if "Rxn" in fig_type:
-            items += [
-                html.Label("Model"),
-                DD("model", ["None"] + list(MODEL_OPTIONS), "None"),
-            ]
-        return items
 
-    if fig_type in {"ThreeDRxn", "ThreeDMol"}:
-        color_opts = ["None"]
-        if "Rxn" in fig_type:
-            color_opts.append("Model Residual")
-        color_opts += list(num_cols)
-        items = [
+    if fig_type == "TwoDMol":
+        color_opts = ["None", *mol_num_cols]
+        return [
+            html.Label("X"),
+            DD("x", mol_num_cols, "pKaRH"),
+            html.Label("Y"),
+            DD("y", mol_num_cols, "E_H"),
+            html.Label("Color"),
+            DD("color", color_opts, "None"),
+        ]
+
+    if fig_type == "ThreeDRxn":
+        color_opts = [
+            "None",
+            {"label": "Model Residual", "value": "Model Residual", "disabled": True},
+            *num_cols,
+        ]
+        return [
             html.Label("X"),
             DD("x", num_cols, "deltaG0"),
             html.Label("Y"),
@@ -285,13 +304,22 @@ def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
             DD("z", num_cols, "computed_barrier"),
             html.Label("Color"),
             DD("color", color_opts, "None"),
+            html.Label("Model"),
+            DD("model", ["None"] + list(MODEL_OPTIONS), "None"),
         ]
-        if "Rxn" in fig_type:
-            items += [
-                html.Label("Model"),
-                DD("model", ["None"] + list(MODEL_OPTIONS), "None"),
-            ]
-        return items
+
+    if fig_type == "ThreeDMol":
+        color_opts = ["None", *mol_num_cols]
+        return [
+            html.Label("X"),
+            DD("x", mol_num_cols, "pKaRH"),
+            html.Label("Y"),
+            DD("y", mol_num_cols, "E_H"),
+            html.Label("Z"),
+            DD("z", mol_num_cols, "omega"),
+            html.Label("Color"),
+            DD("color", color_opts, "None"),
+        ]
 
     return [
         html.Label("Variable"),
@@ -511,6 +539,28 @@ def build_figure(fig_type, values, idx_list):
         model_name=args.get("model"),
         color=args.get("color"),
     )
+
+
+@app.callback(
+    Output({"type": "ctrl", "pane": MATCH, "role": "color"}, "options"),
+    Input({"type": "ctrl", "pane": MATCH, "role": "model"}, "value"),
+    State({"type": "figtype", "pane": MATCH}, "value"),
+)
+def toggle_residual_option(model_value, fig_type):
+    if fig_type not in {"TwoDRxn", "ThreeDRxn"}:
+        raise dash.exceptions.PreventUpdate
+
+    disabled = model_value in (None, "None")
+    base_opts = [
+        {"label": "None", "value": "None"},
+        {
+            "label": "Model Residual",
+            "value": "Model Residual",
+            "disabled": disabled,
+        },
+    ]
+    base_opts += [{"label": c, "value": c} for c in num_cols]
+    return base_opts
 
 
 @app.callback(
