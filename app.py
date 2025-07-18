@@ -587,6 +587,7 @@ def update_filters(n_clicks, datasets, *values):
     for entry in filtered.reactions_df()["datasets_str"]:
         for t in str(entry).split(","):
             tags.add(t.strip())
+    tag_list = sorted(tags)
 
     rxn_df = filtered.reactions_df()
     n_subst = rxn_df["subst_idx"].nunique()
@@ -597,7 +598,14 @@ def update_filters(n_clicks, datasets, *values):
             "Filtered dataset contains ",
             dbc.Badge(len(filtered), color="primary", className="me-1"),
             "reactions from ",
-            dbc.Badge(len(tags), color="secondary", className="me-1"),
+            dbc.Badge(
+                len(tag_list), color="secondary", className="me-1", id="dataset-count"
+            ),
+            dbc.Tooltip(
+                ", ".join(tag_list),
+                target="dataset-count",
+                placement="bottom",
+            ),
             "datasets, involving ",
             dbc.Badge(len(filtered.molecules_df()), color="success", className="me-1"),
             "unique molecules (",
