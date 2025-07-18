@@ -68,6 +68,9 @@ def dropdown(id_, options, value=None, multi=False, *, style=None):
 
     fmt_opts = [o if isinstance(o, dict) else {"label": o, "value": o} for o in options]
 
+    if style is None:
+        style = {"width": "100%"}
+
     return dcc.Dropdown(
         options=fmt_opts,
         value=value,
@@ -149,20 +152,26 @@ def _filter_tile():
             html.Div(
                 [
                     html.H5("Dataset Filtering", className="m-0"),
-                    html.Button(
-                        "Apply",
-                        id="apply-filter-btn",
-                        className="btn btn-primary btn-sm",
-                    ),
-                    html.Button(
-                        "Clear",
-                        id="clear-filter-btn",
-                        className="btn btn-primary btn-sm ms-2",
+                    html.Div(
+                        [
+                            html.Button(
+                                "Apply",
+                                id="apply-filter-btn",
+                                className="btn btn-primary btn-sm",
+                            ),
+                            html.Button(
+                                "Clear",
+                                id="clear-filter-btn",
+                                className="btn btn-primary btn-sm ms-2",
+                            ),
+                        ],
+                        style={"display": "flex", "gap": "6px"},  # Optional: space between buttons
                     ),
                 ],
                 style={
                     "display": "flex",
                     "alignItems": "center",
+                    "justifyContent": "space-between",
                     "position": "sticky",
                     "top": 0,
                     "zIndex": 1,
@@ -203,11 +212,18 @@ def _figure_panel(idx: int) -> html.Div:
         {"type": "figtype", "pane": idx},
         ["TwoDRxn", "TwoDMol", "ThreeDRxn", "ThreeDMol", "Histogram"],
         value="TwoDRxn",
-        style={"width": "33%"},
+        style={"width": "100%"},
     )
+    
     opts_btn = dbc.Button(
-        "\u2699", id={"type": "opts-btn", "pane": idx}, size="sm", className="mb-1"
+        "\u2699",
+        id={"type": "opts-btn", "pane": idx},
+        size="sm",
+        className="mb-1",
+        color="light",           # Use Bootstrap's "light" button for white/gray
+        style={"backgroundColor": "white", "border": "1px solid #ccc"},  # optional refinement
     )
+
     header = html.Div(
         [figure_type_dd, opts_btn],
         style={"display": "flex", "alignItems": "center", "gap": "4px"},
@@ -383,18 +399,18 @@ app.layout = html.Div(
         html.Div(
             [_filter_tile(), _info_tile()],
             style={
-                "flex": "0 0 40%",
+                "flex": "0 0 30%",
                 "height": "100%",
                 "minWidth": 0,
                 "display": "grid",
-                "gridTemplateRows": "3fr 2fr",
+                "gridTemplateRows": "2fr 2fr",
                 "gap": "10px",
             },
         ),
         html.Div(
             [_figure_board()],
             style={
-                "flex": "0 0 60%",
+                "flex": "0 0 70%",
                 "height": "100%",
                 "minWidth": 0,
             },
