@@ -48,7 +48,11 @@ The app loads `data/molecode-data-v0.1.0.h5` by default and will be available at
 The window is divided into two columns. The left side hosts the filters and
 info tabs, while the right side presents a 2×2 grid of independent figure
 panels. Each panel can display a reaction or molecule plot—or a histogram—and
-has a small \u2699 button to toggle the controls relevant to the chosen figure type.
+has a small \u2699 button next to the figure selector to toggle the controls
+relevant to the chosen figure type.
+
+After adjusting the dataset filters hit **Apply** and all visible figures will
+refresh automatically.
 
 The left column uses a **3:2** vertical split and occupies roughly 40% of the
 width, leaving 60% for the figure board. Every quadrant resizes automatically so
