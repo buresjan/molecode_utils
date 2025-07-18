@@ -151,6 +151,9 @@ The returned object is a dictionary with ``"reactions"`` and ``"molecules"``
 keys mapping to ``pandas.Series`` objects. This is handy for assessing how much
 complete data the current view contains.
 
+``Dataset.coverage_counts()`` mirrors this but returns the absolute number of
+non-null entries for each column.
+
 ## Dynamic column access
 
 Any reaction column from ``reactions_df`` can be accessed as an attribute on the

@@ -130,13 +130,22 @@ def _model_stats_table(ds: Dataset) -> html.Table:
     return html.Table([header, body], className="table table-sm")
 
 
-def _coverage_table(series: pd.Series, title: str) -> html.Table:
-    """Return an HTML table rendering of ``series`` percentages."""
+def _coverage_table(pct: pd.Series, cnt: pd.Series, title: str) -> html.Table:
+    """Return an HTML table rendering of coverage percentages and counts."""
 
-    header = html.Thead(html.Tr([html.Th(title, colSpan=2)]))
-    rows = [
-        html.Tr([html.Td(col), html.Td(f"{pct:.1f}%")]) for col, pct in series.items()
-    ]
+    header = html.Thead(
+        [
+            html.Tr([html.Th(title, colSpan=3)]),
+            html.Tr([html.Th("Column"), html.Th("Valid %"), html.Th("Count")]),
+        ]
+    )
+    rows = []
+    for col, val in pct.items():
+        rows.append(
+            html.Tr(
+                [html.Td(col), html.Td(f"{val:.1f}%"), html.Td(int(cnt.get(col, 0)))]
+            )
+        )
     body = html.Tbody(rows)
     return html.Table([header, body], className="table table-sm")
 
@@ -144,9 +153,14 @@ def _coverage_table(series: pd.Series, title: str) -> html.Table:
 def _coverage_tables(ds: Dataset) -> html.Div:
     """Return coverage tables for molecule and reaction columns."""
 
-    cov = ds.coverage()
-    mol = _coverage_table(cov["molecules"], "Molecule Coverage")
-    rxn = _coverage_table(cov["reactions"], "Reaction Coverage")
+    cov_pct = ds.coverage()
+    cov_cnt = ds.coverage_counts()
+    mol = _coverage_table(
+        cov_pct["molecules"], cov_cnt["molecules"], "Molecule Coverage"
+    )
+    rxn = _coverage_table(
+        cov_pct["reactions"], cov_cnt["reactions"], "Reaction Coverage"
+    )
     return html.Div([mol, rxn])
 
 
@@ -486,6 +500,9 @@ def _info_tile():
             "border": "1px solid #ccc",
             "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
             "padding": "10px",
+            "overflowY": "auto",
+            "minHeight": "0",
+            "maxHeight": "100%",
         },
     )
     return content
@@ -571,6 +588,10 @@ def update_filters(n_clicks, datasets, *values):
         for t in str(entry).split(","):
             tags.add(t.strip())
 
+    rxn_df = filtered.reactions_df()
+    n_subst = rxn_df["subst_idx"].nunique()
+    n_oxid = rxn_df["oxid_idx"].nunique()
+
     summary = html.Span(
         [
             "Filtered dataset contains ",
@@ -579,7 +600,11 @@ def update_filters(n_clicks, datasets, *values):
             dbc.Badge(len(tags), color="secondary", className="me-1"),
             "datasets, involving ",
             dbc.Badge(len(filtered.molecules_df()), color="success", className="me-1"),
-            "unique molecules.",
+            "unique molecules (",
+            html.B(n_subst),
+            " substrates, ",
+            html.B(n_oxid),
+            " oxidants).",
         ]
     )
     info = html.Div([summary, _coverage_tables(filtered)])
