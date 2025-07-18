@@ -81,8 +81,12 @@ def _model_stats_table(ds: Dataset) -> html.Table:
     actual = df_all.get("computed_barrier")
     n_total = len(df_all)
     for m in MODEL_OPTIONS.values():
-        eval_df = m.evaluate(ds)
-        pred = eval_df[f"{m.name}_pred"]
+        try:
+            # use vectorised predictions when available
+            pred = m.predict_df(df_all)
+        except Exception:  # pragma: no cover - fallback for custom models
+            eval_df = m.evaluate(ds)
+            pred = eval_df[f"{m.name}_pred"]
         valid = pred.notna() & actual.notna()
         coverage = valid.sum() / n_total * 100 if n_total else 0.0
         if valid.sum() > 1:
