@@ -45,14 +45,18 @@ python app.py
 The app loads `data/molecode-data-v0.1.0.h5` by default and will be available at
 `http://127.0.0.1:8050/`.
 
-The interface is arranged in four quadrants:
+The window is divided into two columns. The left side hosts the filters and
+info tabs, while the right side presents a 2×2 grid of independent figure
+panels. Each panel can display a reaction or molecule plot—or a histogram—and
+has a small \u2699 button next to the figure selector to toggle the controls
+relevant to the chosen figure type.
 
-- **Upper left** – numeric filter fields for narrowing the dataset.
-  Click "Apply Filter" to refresh the dataset across the dashboard. The
-  dashboard initially shows information and plots for the full dataset.
-- **Lower left** – tabs showing dataset info and lookup placeholders.
-- **Upper right** – two configurable scatter plots displayed side by side.
-- **Lower right** – a placeholder for future model analysis features.
+After adjusting the dataset filters hit **Apply** and all visible figures will
+refresh automatically.
 
-The left column uses a **3:2** vertical split while the right column is split
-into two equal halves so that each section maintains its own proportions. Horizontally about 40% of the width is reserved for filters and info, leaving 60% for graphs and analysis.
+A small **Select All** button next to the *Datasets* dropdown fills in every
+available tag so you can deselect any you don't want.
+
+The left column uses a **3:2** vertical split and occupies roughly 40% of the
+width, leaving 60% for the figure board. Every quadrant resizes automatically so
+no scroll bars appear even when the window is narrowed.

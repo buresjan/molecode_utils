@@ -1,13 +1,19 @@
 import dash
 from dash import dcc, html
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
 
 from molecode_utils.dataset import Dataset
 from molecode_utils.filter import Filter
-from molecode_utils.figures import TwoDRxn
+from molecode_utils.figures import (
+    TwoDRxn,
+    TwoDMol,
+    ThreeDRxn,
+    ThreeDMol,
+    Histogram,
+)
 from molecode_utils.model import ModelM1, ModelM2, ModelM3, ModelM4
 
 # -----------------------------------------------------------------------------
@@ -18,6 +24,10 @@ full_ds = Dataset.from_hdf(DATA_PATH)
 
 reaction_df = full_ds.reactions_df()
 num_cols = reaction_df.select_dtypes(include="number").columns
+
+# Numeric columns available in the molecules table
+mol_df = full_ds.molecules_df()
+mol_num_cols = mol_df.select_dtypes(include="number").columns
 
 # Columns whose numeric ranges are finite (no NaN at either end)
 finite_cols = [
@@ -53,13 +63,21 @@ MODEL_OPTIONS = {
 }
 
 
-def dropdown(id_, options, value=None, multi=False):
+def dropdown(id_, options, value=None, multi=False, *, style=None):
+    """Return a reusable ``dcc.Dropdown`` element."""
+
+    fmt_opts = [o if isinstance(o, dict) else {"label": o, "value": o} for o in options]
+
+    if style is None:
+        style = {"width": "100%"}
+
     return dcc.Dropdown(
-        options=[{"label": o, "value": o} for o in options],
+        options=fmt_opts,
         value=value,
         id=id_,
         multi=multi,
         clearable=False,
+        style=style,
     )
 
 
@@ -134,20 +152,26 @@ def _filter_tile():
             html.Div(
                 [
                     html.H5("Dataset Filtering", className="m-0"),
-                    html.Button(
-                        "Apply",
-                        id="apply-filter-btn",
-                        className="btn btn-primary btn-sm",
-                    ),
-                    html.Button(
-                        "Clear",
-                        id="clear-filter-btn",
-                        className="btn btn-outline-secondary btn-sm ms-2",
+                    html.Div(
+                        [
+                            html.Button(
+                                "Apply",
+                                id="apply-filter-btn",
+                                className="btn btn-primary btn-sm",
+                            ),
+                            html.Button(
+                                "Clear",
+                                id="clear-filter-btn",
+                                className="btn btn-primary btn-sm ms-2",
+                            ),
+                        ],
+                        style={"display": "flex", "gap": "6px"},  # Optional: space between buttons
                     ),
                 ],
                 style={
                     "display": "flex",
                     "alignItems": "center",
+                    "justifyContent": "space-between",
                     "position": "sticky",
                     "top": 0,
                     "zIndex": 1,
@@ -155,7 +179,17 @@ def _filter_tile():
                     "paddingBottom": "4px",
                 },
             ),
-            html.Label("Datasets"),
+            html.Div(
+                [
+                    html.Label("Datasets", className="m-0"),
+                    html.Button(
+                        "Select All",
+                        id="select-datasets-btn",
+                        className="btn btn-outline-secondary btn-sm ms-2",
+                    ),
+                ],
+                style={"display": "flex", "alignItems": "center", "gap": "4px"},
+            ),
             dropdown("dataset-dropdown", all_tags, multi=True),
             html.Div(inputs, style={"display": "grid", "rowGap": "6px"}),
         ],
@@ -171,64 +205,168 @@ def _filter_tile():
     return content
 
 
-def _graph_panel(idx: int) -> html.Div:
+def _figure_panel(idx: int) -> html.Div:
+    """Return a single figure panel for the dashboard."""
+
+    figure_type_dd = dropdown(
+        {"type": "figtype", "pane": idx},
+        ["TwoDRxn", "TwoDMol", "ThreeDRxn", "ThreeDMol", "Histogram"],
+        value="TwoDRxn",
+        style={"width": "100%"},
+    )
+    
+    opts_btn = dbc.Button(
+        "\u2699",
+        id={"type": "opts-btn", "pane": idx},
+        size="sm",
+        className="mb-1",
+        color="light",           # Use Bootstrap's "light" button for white/gray
+        style={"backgroundColor": "white", "border": "1px solid #ccc"},  # optional refinement
+    )
+
+    header = html.Div(
+        [figure_type_dd, opts_btn],
+        style={"display": "flex", "alignItems": "center", "gap": "4px"},
+    )
+    graph = dcc.Graph(
+        id={"type": "fig", "pane": idx},
+        style={"flex": 1, "width": "100%", "height": "100%"},
+        config={"responsive": True},
+    )
+    controls = dbc.Collapse(
+        html.Div(
+            id={"type": "controls", "pane": idx},
+            style={"maxHeight": "160px", "overflowY": "auto"},
+        ),
+        id={"type": "collapse", "pane": idx},
+        is_open=False,
+    )
     return html.Div(
-        [
-            html.Div(
-                [
-                    html.Label("X"),
-                    dropdown(f"x-select-{idx}", num_cols, value="deltaG0"),
-                    html.Label("Y"),
-                    dropdown(f"y-select-{idx}", num_cols, value="computed_barrier"),
-                    html.Label("Color"),
-                    dropdown(
-                        f"color-select-{idx}",
-                        ["None", "Model Residual"] + list(num_cols),
-                        value="None",
-                    ),
-                    html.Label("Model"),
-                    dropdown(
-                        f"model-select-{idx}",
-                        ["None"] + list(MODEL_OPTIONS),
-                        value="None",
-                    ),
-                ],
-                style={
-                    "display": "grid",
-                    "gridTemplateColumns": "1fr 1fr",
-                    "columnGap": "5px",
-                },
-            ),
-            dcc.Graph(
-                id=f"graph{idx}",
-                style={"flex": 1, "width": "100%", "height": "100%"},
-                config={"responsive": True},
-            ),
-        ],
+        [header, controls, graph],
         style={
             "display": "flex",
             "flexDirection": "column",
-            "flex": "1 1 50%",
-            "minWidth": 0,
             "minHeight": 0,
+            "minWidth": 0,
         },
     )
 
 
-def _graphs_tile():
-    content = html.Div(
-        html.Div(
-            [_graph_panel(1), _graph_panel(2)],
-            style={"display": "flex", "gap": "10px", "height": "100%"},
-        ),
+def _figure_board() -> html.Div:
+    """Container holding the 2×2 grid of figure panels."""
+
+    return html.Div(
+        [_figure_panel(i + 1) for i in range(4)],
         style={
-            "padding": "8px",
+            "display": "grid",
+            "gridTemplateColumns": "1fr 1fr",
+            "gridTemplateRows": "1fr 1fr",
+            "gap": "10px",
             "height": "100%",
+            "padding": "8px",
             "border": "1px solid #ccc",
             "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
         },
     )
-    return content
+
+
+def _model(name: str | None):
+    """Return a model instance for the given name, or ``None``."""
+
+    if not name or name == "None":
+        return None
+    return MODEL_OPTIONS.get(name)
+
+
+from typing import Any
+
+
+def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
+    """Return the controls appropriate for a figure type."""
+
+    B = lambda role: {"type": "ctrl", "pane": pane, "role": role}
+    DD = lambda role, opts, val: dropdown(B(role), opts, value=val)
+
+    if fig_type == "TwoDRxn":
+        color_opts = [
+            "None",
+            {"label": "Model Residual", "value": "Model Residual", "disabled": True},
+            *num_cols,
+        ]
+        return [
+            html.Label("X"),
+            DD("x", num_cols, "deltaG0"),
+            html.Label("Y"),
+            DD("y", num_cols, "computed_barrier"),
+            html.Label("Color"),
+            DD("color", color_opts, "None"),
+            html.Label("Model"),
+            DD("model", ["None"] + list(MODEL_OPTIONS), "None"),
+        ]
+
+    if fig_type == "TwoDMol":
+        color_opts = ["None", *mol_num_cols]
+        return [
+            html.Label("X"),
+            DD("x", mol_num_cols, "pKaRH"),
+            html.Label("Y"),
+            DD("y", mol_num_cols, "E_H"),
+            html.Label("Color"),
+            DD("color", color_opts, "None"),
+        ]
+
+    if fig_type == "ThreeDRxn":
+        color_opts = [
+            "None",
+            {"label": "Model Residual", "value": "Model Residual", "disabled": True},
+            *num_cols,
+        ]
+        return [
+            html.Label("X"),
+            DD("x", num_cols, "deltaG0"),
+            html.Label("Y"),
+            DD("y", num_cols, "asynchronicity"),
+            html.Label("Z"),
+            DD("z", num_cols, "computed_barrier"),
+            html.Label("Color"),
+            DD("color", color_opts, "None"),
+            html.Label("Model"),
+            DD("model", ["None"] + list(MODEL_OPTIONS), "None"),
+        ]
+
+    if fig_type == "ThreeDMol":
+        color_opts = ["None", *mol_num_cols]
+        return [
+            html.Label("X"),
+            DD("x", mol_num_cols, "pKaRH"),
+            html.Label("Y"),
+            DD("y", mol_num_cols, "E_H"),
+            html.Label("Z"),
+            DD("z", mol_num_cols, "omega"),
+            html.Label("Color"),
+            DD("color", color_opts, "None"),
+        ]
+
+    return [
+        html.Label("Variable"),
+        DD("col", num_cols, "deltaG0"),
+        html.Label("Bins"),
+        dcc.Input(id=B("bins"), type="number", value=50, className="form-control"),
+        html.Label("Color"),
+        DD("color", ["None", "dataset_main"] + list(num_cols), "None"),
+    ]
+
+
+@app.callback(
+    Output({"type": "controls", "pane": MATCH}, "children"),
+    Input({"type": "figtype", "pane": MATCH}, "value"),
+)
+def render_controls(fig_type: str):
+    ctx = dash.callback_context
+    if not ctx.inputs_list:
+        return dash.no_update
+    pane = ctx.inputs_list[0]["id"].get("pane")
+    return _make_controls(fig_type, pane=pane)
 
 
 def _info_tile():
@@ -255,46 +393,26 @@ def _info_tile():
     return content
 
 
-def _analysis_tile():
-    content = html.Div(
-        html.Div(
-            "Model analysis coming soon...",
-            style={"textAlign": "center", "color": "gray"},
-        ),
-        style={
-            "border": "1px solid #ccc",
-            "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
-            "display": "flex",
-            "alignItems": "center",
-            "justifyContent": "center",
-        },
-    )
-    return content
-
-
 app.layout = html.Div(
     [
         dcc.Store(id="filtered-indexes"),
         html.Div(
             [_filter_tile(), _info_tile()],
             style={
-                "flex": "0 0 40%",
+                "flex": "0 0 30%",
                 "height": "100%",
                 "minWidth": 0,
                 "display": "grid",
-                "gridTemplateRows": "3fr 2fr",
+                "gridTemplateRows": "2fr 2fr",
                 "gap": "10px",
             },
         ),
         html.Div(
-            [_graphs_tile(), _analysis_tile()],
+            [_figure_board()],
             style={
-                "flex": "0 0 60%",
+                "flex": "0 0 70%",
                 "height": "100%",
                 "minWidth": 0,
-                "display": "grid",
-                "gridTemplateRows": "1fr 1fr",
-                "gap": "10px",
             },
         ),
     ],
@@ -365,67 +483,144 @@ def update_filters(n_clicks, datasets, *values):
     return filtered._rxn_ids, info
 
 
-def _build_figure(idx_list, x, y, model_name, color_var):
+def _build_figure(
+    fig_type: str,
+    idx_list,
+    *,
+    x=None,
+    y=None,
+    z=None,
+    column=None,
+    bins=None,
+    model_name=None,
+    color=None,
+):
+    """Construct the appropriate Plotly figure for the chosen type."""
+
     ds = Dataset(full_ds._arc, idx_list) if idx_list else full_ds
-    model = (
-        MODEL_OPTIONS.get(model_name) if model_name and model_name != "None" else None
-    )
-
-    color_by = None
-    if color_var and color_var != "None":
-        if color_var == "Model Residual" and model:
-            color_by = f"{model.name}_resid"
-        elif color_var != "Model Residual":
-            color_by = color_var
-
-    if ds.reactions_df().empty:
+    if len(ds) == 0:
         return go.Figure()
 
-    fig = TwoDRxn(ds, x=x, y=y, model=model, color_by=color_by).figure
-    fig.update_layout(
-        autosize=True,
-        margin=dict(l=0, r=0, t=40, b=40),
-        coloraxis_colorbar_x=1.02,
-    )
+    # guard against missing axes or NaN-only data
+    if fig_type in {"TwoDRxn", "TwoDMol"} and (x is None or y is None):
+        return go.Figure()
+    if fig_type in {"ThreeDRxn", "ThreeDMol"} and (x is None or y is None or z is None):
+        return go.Figure()
+
+    if fig_type in {"TwoDRxn", "ThreeDRxn", "Histogram"}:
+        df = ds.reactions_df()
+    else:
+        df = ds.molecules_df()
+    cols = [c for c in [x, y, z, column] if c]
+    missing = [c for c in cols if c not in df]
+    if missing:
+        return go.Figure()
+    if cols and df[cols].dropna().empty:
+        return go.Figure()
+    model = _model(model_name)
+
+    color_by = None
+    if color and color != "None":
+        if color == "Model Residual" and model:
+            color_by = f"{model.name}_resid"
+        else:
+            color_by = color
+
+    if fig_type == "TwoDRxn":
+        fig = TwoDRxn(ds, x=x, y=y, model=model, color_by=color_by).figure
+    elif fig_type == "TwoDMol":
+        fig = TwoDMol(ds, x=x, y=y, color_by=color_by).figure
+    elif fig_type == "ThreeDRxn":
+        fig = ThreeDRxn(ds, x=x, y=y, z=z, model=model, color_by=color_by).figure
+    elif fig_type == "ThreeDMol":
+        fig = ThreeDMol(ds, x=x, y=y, z=z, color_by=color_by).figure
+    else:
+        fig = Histogram(
+            ds, column=column, bins=bins, color_by=color_by, table="reactions"
+        ).figure
+
+    fig.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
     return fig
 
 
 @app.callback(
-    Output("graph1", "figure"),
-    [
-        Input("filtered-indexes", "data"),
-        Input("x-select-1", "value"),
-        Input("y-select-1", "value"),
-        Input("model-select-1", "value"),
-        Input("color-select-1", "value"),
-    ],
+    Output({"type": "fig", "pane": MATCH}, "figure"),
+    Input({"type": "figtype", "pane": MATCH}, "value"),
+    Input({"type": "ctrl", "pane": MATCH, "role": ALL}, "value"),
+    Input("filtered-indexes", "data"),
 )
-def refresh_graph1(idx_list, x, y, model_name, color_var):
-    return _build_figure(idx_list, x, y, model_name, color_var)
+def build_figure(fig_type, values, idx_list):
+    items = dash.callback_context.inputs_list[1]
+    args = {c["id"].get("role"): v for c, v in zip(items, values) if "role" in c["id"]}
+    if not args:
+        return go.Figure()
+    return _build_figure(
+        fig_type,
+        idx_list,
+        x=args.get("x"),
+        y=args.get("y"),
+        z=args.get("z"),
+        column=args.get("col"),
+        bins=args.get("bins"),
+        model_name=args.get("model"),
+        color=args.get("color"),
+    )
 
 
 @app.callback(
-    Output("graph2", "figure"),
-    [
-        Input("filtered-indexes", "data"),
-        Input("x-select-2", "value"),
-        Input("y-select-2", "value"),
-        Input("model-select-2", "value"),
-        Input("color-select-2", "value"),
-    ],
+    Output({"type": "ctrl", "pane": MATCH, "role": "color"}, "options"),
+    Input({"type": "ctrl", "pane": MATCH, "role": "model"}, "value"),
+    State({"type": "figtype", "pane": MATCH}, "value"),
 )
-def refresh_graph2(idx_list, x, y, model_name, color_var):
-    return _build_figure(idx_list, x, y, model_name, color_var)
+def toggle_residual_option(model_value, fig_type):
+    if fig_type not in {"TwoDRxn", "ThreeDRxn"}:
+        raise dash.exceptions.PreventUpdate
+
+    disabled = model_value in (None, "None")
+    base_opts = [
+        {"label": "None", "value": "None"},
+        {
+            "label": "Model Residual",
+            "value": "Model Residual",
+            "disabled": disabled,
+        },
+    ]
+    base_opts += [{"label": c, "value": c} for c in num_cols]
+    return base_opts
+
+
+@app.callback(
+    Output({"type": "collapse", "pane": MATCH}, "is_open"),
+    Input({"type": "opts-btn", "pane": MATCH}, "n_clicks"),
+    State({"type": "collapse", "pane": MATCH}, "is_open"),
+    prevent_initial_call=True,
+)
+def toggle_opts(n, is_open):
+    return not is_open
 
 
 @app.callback(
     Output("dataset-dropdown", "value"),
     *[Output(f"min-{cid}", "value") for cid in finite_ids],
     *[Output(f"max-{cid}", "value") for cid in finite_ids],
+    Input("select-datasets-btn", "n_clicks"),
     Input("clear-filter-btn", "n_clicks"),
     prevent_initial_call=True,
 )
-def clear_all(n):
+def modify_dataset_values(select_n, clear_n):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if button_id == "select-datasets-btn":
+        return (
+            all_tags,
+            *[dash.no_update for _ in finite_ids],
+            *[dash.no_update for _ in finite_ids],
+        )
+
+    # clear-filter-btn triggered
     return (
         None,
         *[num_ranges[c][0] for c in finite_cols],

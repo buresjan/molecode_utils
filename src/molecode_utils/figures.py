@@ -70,8 +70,16 @@ class TwoDRxn:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
+            cols = []
+            for c in (x, y, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
+            for col in hover_cols:
+                if col not in plot_df:
+                    plot_df[col] = df[col]
             self.figure = px.scatter(
-                df,
+                plot_df,
                 x=x,
                 y=y,
                 color=color_col,
@@ -79,7 +87,6 @@ class TwoDRxn:
                 title=self.title,
                 hover_data=hover_cols,
                 template="plotly_white",
-                height=700,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -92,6 +99,7 @@ class TwoDRxn:
                 yaxis_title=self._make_label(y, latex=self.latex_labels),
             )
             self.figure.update_traces(marker=dict(size=6))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib(df, x, y, color_col, labels)
         else:
@@ -232,15 +240,19 @@ class TwoDMol:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
+            cols = []
+            for c in (x, y, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
             self.figure = px.scatter(
-                df,
+                plot_df,
                 x=x,
                 y=y,
                 color=color_col,
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=700,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -253,6 +265,7 @@ class TwoDMol:
                 yaxis_title=TwoDRxn._make_label(y, latex=self.latex_labels),
             )
             self.figure.update_traces(marker=dict(size=6))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = TwoDRxn._scatter_matplotlib(self, df, x, y, color_col, labels)
         else:
@@ -291,6 +304,7 @@ class ThreeDRxn:
         title: Optional[str] = None,
         fast_predict: bool = True,
         backend: str = "plotly",
+        latex_labels: bool = True,
     ) -> None:
         self.dataset = dataset
         self.x = x
@@ -300,6 +314,7 @@ class ThreeDRxn:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
+        self.latex_labels = latex_labels and backend == "matplotlib"
 
         need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
         df = dataset.reactions_df(add_dataset_main=need_dataset_main)
@@ -330,8 +345,16 @@ class ThreeDRxn:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
+            cols = []
+            for c in (x, y, z, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
+            for col in hover_cols:
+                if col not in plot_df:
+                    plot_df[col] = df[col]
             self.figure = px.scatter_3d(
-                df,
+                plot_df,
                 x=x,
                 y=y,
                 z=z,
@@ -340,7 +363,6 @@ class ThreeDRxn:
                 title=self.title,
                 hover_data=hover_cols,
                 template="plotly_white",
-                height=900,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -352,6 +374,7 @@ class ThreeDRxn:
                 ),
             )
             self.figure.update_traces(marker=dict(size=4))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
         else:
@@ -455,8 +478,13 @@ class ThreeDMol:
         }
         color_col = color_by or group_by
         if self.backend == "plotly":
+            cols = []
+            for c in (x, y, z, color_col):
+                if c and c not in cols:
+                    cols.append(c)
+            plot_df = df[cols].copy()
             self.figure = px.scatter_3d(
-                df,
+                plot_df,
                 x=x,
                 y=y,
                 z=z,
@@ -464,7 +492,6 @@ class ThreeDMol:
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=900,
             )
             self.figure.update_layout(
                 hovermode="closest",
@@ -476,6 +503,7 @@ class ThreeDMol:
                 ),
             )
             self.figure.update_traces(marker=dict(size=4))
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
         else:
@@ -592,12 +620,12 @@ class Histogram:
                 labels=labels,
                 title=self.title,
                 template="plotly_white",
-                height=600,
             )
             self.figure.update_layout(
                 xaxis_title=labels[column],
                 yaxis_title="count",
             )
+            self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
         elif backend == "matplotlib":
             fig, ax = plt.subplots(figsize=(7, 5))
             if color_by:
