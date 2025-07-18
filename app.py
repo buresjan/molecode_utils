@@ -130,6 +130,26 @@ def _model_stats_table(ds: Dataset) -> html.Table:
     return html.Table([header, body], className="table table-sm")
 
 
+def _coverage_table(series: pd.Series, title: str) -> html.Table:
+    """Return an HTML table rendering of ``series`` percentages."""
+
+    header = html.Thead(html.Tr([html.Th(title, colSpan=2)]))
+    rows = [
+        html.Tr([html.Td(col), html.Td(f"{pct:.1f}%")]) for col, pct in series.items()
+    ]
+    body = html.Tbody(rows)
+    return html.Table([header, body], className="table table-sm")
+
+
+def _coverage_tables(ds: Dataset) -> html.Div:
+    """Return coverage tables for molecule and reaction columns."""
+
+    cov = ds.coverage()
+    mol = _coverage_table(cov["molecules"], "Molecule Coverage")
+    rxn = _coverage_table(cov["reactions"], "Reaction Coverage")
+    return html.Div([mol, rxn])
+
+
 def dropdown(id_, options, value=None, multi=False, *, style=None):
     """Return a reusable ``dcc.Dropdown`` element."""
 
@@ -551,7 +571,7 @@ def update_filters(n_clicks, datasets, *values):
         for t in str(entry).split(","):
             tags.add(t.strip())
 
-    info = html.Span(
+    summary = html.Span(
         [
             "Filtered dataset contains ",
             dbc.Badge(len(filtered), color="primary", className="me-1"),
@@ -562,6 +582,7 @@ def update_filters(n_clicks, datasets, *values):
             "unique molecules.",
         ]
     )
+    info = html.Div([summary, _coverage_tables(filtered)])
     stats = _model_stats_table(filtered)
     return filtered._rxn_ids, info, stats
 

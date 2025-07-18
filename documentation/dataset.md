@@ -137,6 +137,20 @@ print(descr.loc[:, [c for c in descr.columns if c.startswith("deltaG")]])
 
 Combined with filtering this is useful for quick exploratory analysis.
 
+## Data coverage
+
+``Dataset.coverage()`` returns the percentage of valid (non-null) values for
+all reaction and molecule columns:
+
+```python
+cov = ds.coverage()
+print(cov["reactions"].head())
+```
+
+The returned object is a dictionary with ``"reactions"`` and ``"molecules"``
+keys mapping to ``pandas.Series`` objects. This is handy for assessing how much
+complete data the current view contains.
+
 ## Dynamic column access
 
 Any reaction column from ``reactions_df`` can be accessed as an attribute on the
