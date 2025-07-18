@@ -296,6 +296,7 @@ class ThreeDRxn:
         title: Optional[str] = None,
         fast_predict: bool = True,
         backend: str = "plotly",
+        latex_labels: bool = True,
     ) -> None:
         self.dataset = dataset
         self.x = x
@@ -305,6 +306,7 @@ class ThreeDRxn:
         self.color_by = color_by
         self.group_by = group_by
         self.backend = backend
+        self.latex_labels = latex_labels and backend == "matplotlib"
 
         need_dataset_main = color_by == "dataset_main" or group_by == "dataset_main"
         df = dataset.reactions_df(add_dataset_main=need_dataset_main)

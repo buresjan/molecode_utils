@@ -296,10 +296,10 @@ def _make_controls(fig_type: str, *, pane: int) -> list[Any]:
     Input({"type": "figtype", "pane": MATCH}, "value"),
 )
 def render_controls(fig_type: str):
-    triggered = dash.callback_context.triggered_id
-    if triggered is None:
+    ctx = dash.callback_context
+    if not ctx.inputs_list:
         return dash.no_update
-    pane = triggered["pane"]
+    pane = ctx.inputs_list[0]["id"].get("pane")
     return _make_controls(fig_type, pane=pane)
 
 
@@ -446,6 +446,9 @@ def _build_figure(
     else:
         df = ds.molecules_df()
     cols = [c for c in [x, y, z, column] if c]
+    missing = [c for c in cols if c not in df]
+    if missing:
+        return go.Figure()
     if cols and df[cols].dropna().empty:
         return go.Figure()
     model = _model(model_name)
