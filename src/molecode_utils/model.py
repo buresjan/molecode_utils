@@ -68,6 +68,9 @@ class Model(ABC):
     #: A short, human‑readable identifier (e.g. "M1")
     name: str = "Model"
 
+    #: Short equation string describing the model (plain text or LaTeX)
+    equation: str = ""
+
     # ── compulsory low‑level primitive ────────────────────────────────
     @abstractmethod
     def _predict_one(self, rxn: Reaction) -> float:
@@ -194,6 +197,7 @@ class ModelS(Model):
     """
 
     name = "S"
+    equation = "λ₀₀₀/4 + 0.5*(w_R+w_P) + 0.25*(|σ|-|η|) + 0.5*ΔG0"
 
     def __init__(self, lambda_000: float = 0.0):
         self.lambda_000 = float(lambda_000)
@@ -282,6 +286,7 @@ class ModelM1(_MBase):
     """M1  – *linear* self‑exchange based model."""
 
     name = "M1"
+    equation = "0.5*(ΔG‡_XX+ΔG‡_YY) + 0.5*ΔG0"
 
     def predict_df(self, df: pd.DataFrame) -> pd.Series:
         return self._linear_term_df(df).rename(f"{self.name}_pred")
@@ -294,6 +299,7 @@ class ModelM2(_MBase):
     """M2  – linear model + *formation‑energy* correction Δw."""
 
     name = "M2"
+    equation = "M1 + 0.5*(w_R_XY+w_P_XY) - 0.5*(w_R_XX+w_R_YY)"
 
     def predict_df(self, df: pd.DataFrame) -> pd.Series:
         linear = self._linear_term_df(df)
@@ -314,6 +320,7 @@ class ModelM3(_MBase):
     """M3  – adds the **quadratic Marcus term** f_q."""
 
     name = "M3"
+    equation = "M1 + 0.125*ΔG0^2/(ΔG‡_XX+ΔG‡_YY)"
 
     def predict_df(self, df: pd.DataFrame) -> pd.Series:
         linear = self._linear_term_df(df)
@@ -341,6 +348,7 @@ class ModelM4(_MBase):
     """M4  – linear + Δw + *quadratic w‑corrected* term f_qw."""
 
     name = "M4"
+    equation = "M1 + Δw + 0.125*(ΔG0+w_P_XY-w_R_XY)^2/(ΔG‡_XX+ΔG‡_YY-2*w_R_xx_yy)"
 
     def _predict_one(self, rxn: Reaction) -> float:  # noqa: C901 (complexity OK)
         linear = self._linear_term(rxn)
