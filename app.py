@@ -490,7 +490,7 @@ def _info_tile():
         style={
             "position": "sticky",
             "top": 0,
-            "zIndex": 1,
+            "zIndex": 2,
             "background": "white",
         },
     )
@@ -499,7 +499,10 @@ def _info_tile():
         style={
             "border": "1px solid #ccc",
             "boxShadow": "0 2px 4px rgba(0,0,0,.04)",
-            "padding": "10px",
+            "paddingLeft": "10px",
+            "paddingRight": "10px",
+            "paddingTop": "0px",
+            "paddingBottom": "10px",
             "overflowY": "auto",
             "minHeight": "0",
             "maxHeight": "100%",
@@ -622,14 +625,14 @@ def update_filters(n_clicks, datasets, *values):
                 id="dataset-summary",
                 style={
                     "position": "sticky",
-                    "top": 0,
+                    "top": "90px",
                     "background": "white",
                     "zIndex": 1,
                     "paddingBottom": "4px",
                 },
             ),
             _coverage_tables(filtered),
-        ]
+        ],
     )
     stats = _model_stats_table(filtered)
     return filtered._rxn_ids, info, stats
