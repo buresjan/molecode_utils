@@ -100,6 +100,11 @@ class TwoDRxn:
             )
             self.figure.update_traces(marker=dict(size=6))
             self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
+            if color_col and plot_df[color_col].dtype.kind in "if":
+                self.figure.update_coloraxes(
+                    colorbar_title_text=self._make_label(color_col, latex=False),
+                    colorbar_title_side="right",
+                )
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib(df, x, y, color_col, labels)
         else:
@@ -266,6 +271,11 @@ class TwoDMol:
             )
             self.figure.update_traces(marker=dict(size=6))
             self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
+            if color_col and plot_df[color_col].dtype.kind in "if":
+                self.figure.update_coloraxes(
+                    colorbar_title_text=TwoDRxn._make_label(color_col, latex=False),
+                    colorbar_title_side="right",
+                )
         elif self.backend == "matplotlib":
             self.figure = TwoDRxn._scatter_matplotlib(self, df, x, y, color_col, labels)
         else:
@@ -375,6 +385,11 @@ class ThreeDRxn:
             )
             self.figure.update_traces(marker=dict(size=4))
             self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
+            if color_col and plot_df[color_col].dtype.kind in "if":
+                self.figure.update_coloraxes(
+                    colorbar_title_text=TwoDRxn._make_label(color_col, latex=False),
+                    colorbar_title_side="right",
+                )
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
         else:
@@ -504,6 +519,11 @@ class ThreeDMol:
             )
             self.figure.update_traces(marker=dict(size=4))
             self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
+            if color_col and plot_df[color_col].dtype.kind in "if":
+                self.figure.update_coloraxes(
+                    colorbar_title_text=TwoDRxn._make_label(color_col, latex=False),
+                    colorbar_title_side="right",
+                )
         elif self.backend == "matplotlib":
             self.figure = self._scatter_matplotlib_3d(df, x, y, z, color_col, labels)
         else:
@@ -626,6 +646,11 @@ class Histogram:
                 yaxis_title="count",
             )
             self.figure.update_layout(autosize=True, margin=dict(l=0, r=0, t=40, b=40))
+            if color_by and df[color_by].dtype.kind in "if":
+                self.figure.update_coloraxes(
+                    colorbar_title_text=TwoDRxn._make_label(color_by, latex=False),
+                    colorbar_title_side="right",
+                )
         elif backend == "matplotlib":
             fig, ax = plt.subplots(figsize=(7, 5))
             if color_by:
